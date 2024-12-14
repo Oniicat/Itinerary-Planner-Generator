@@ -16,6 +16,7 @@ class _MapWidgetState extends State<MapWidget> {
   static const LatLng _destination1 =
       LatLng(14.48278480841818, 121.18716191070331);
   static const LatLng _Jabee = LatLng(14.492796103262384, 121.18167384328976);
+  static const LatLng _Mcdo = LatLng(14.49208236393375, 121.18131129901126);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,7 +32,11 @@ class _MapWidgetState extends State<MapWidget> {
         Marker(
             markerId: MarkerId("Jollibee"),
             icon: BitmapDescriptor.defaultMarker,
-            position: _Jabee)
+            position: _Jabee),
+        Marker(
+            markerId: MarkerId("Mcdo"),
+            icon: BitmapDescriptor.defaultMarker,
+            position: _Mcdo)
       },
     ));
   }
