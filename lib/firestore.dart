@@ -34,7 +34,7 @@ class InsertData extends StatefulWidget {
 class _InsertDataState extends State<InsertData> {
   @override
   Widget build(BuildContext context) {
-    CreateUser('3', 'Alice', 'alice@gmail.com', 20);
+    Adduser();
     return MaterialApp(
       home: Scaffold(
           appBar: AppBar(title: Text('Sample Firestore')),

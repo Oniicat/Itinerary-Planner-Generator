@@ -1,5 +1,6 @@
 import 'package:firestore_basics/firestore.dart';
 import 'package:firestore_basics/map_sample.dart';
+import 'package:firestore_basics/practice_maps.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
