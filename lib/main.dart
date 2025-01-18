@@ -1,4 +1,8 @@
+import 'package:firestore_basics/Ui/homepage.dart';
+import 'package:firestore_basics/Ui/navbar.dart';
+import 'package:firestore_basics/cart.dart';
 import 'package:firestore_basics/firestore.dart';
+import 'package:firestore_basics/map.dart';
 import 'package:firestore_basics/map_sample.dart';
 import 'package:firestore_basics/practice_maps.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +33,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      home: MapScreen(),
+      home: NavBar(),
     );
   }
 }

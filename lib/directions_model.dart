@@ -22,8 +22,8 @@ class Directions {
     final leg = route['legs'][0];
 
     return Directions(
-      totalDistance: leg['distance']['text'] ?? '',
-      totalDuration: leg['duration']['text'] ?? '',
+      totalDistance: leg['distance']['text'] ?? 'N/A',
+      totalDuration: leg['duration']['text'] ?? 'N/A',
       polylinePoints: PolylinePoints()
           .decodePolyline(route['overview_polyline']['points'] ?? '')
           .map((point) => LatLng(point.latitude, point.longitude))

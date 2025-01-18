@@ -113,34 +113,20 @@ class _MapScreenState extends State<MapScreen> {
   Set<Marker> markers = {};
   String? _selectedType; // Holds the current filter type
   List<String> _locationTypes = []; // Types of locations fetched from Firestore
-  late String lat;
-  late String long;
+  // late String lat;
+  // late String long;
   LatLng? userLocation;
   LatLng? pointB;
   Directions? _info; // route information
-  Set<Polyline> polylines = {}; //added this for multiple destinations
+  Set<Polyline> polylines = {}; //storing routes for multiple destinations
+  bool showRoute = false;
+  Map<String, dynamic>? _selectedDestination;
+
   @override
   void initState() {
     super.initState();
     _initializeScreen();
     _getUserLocation();
-    _pointB();
-  }
-
-//sample point b marker
-  void _pointB() {
-    setState(() {
-      pointB = LatLng(14.49208236393375, 121.18131129901126);
-      markers.add(
-        Marker(
-          markerId: MarkerId("user_location"),
-          position: pointB!,
-          infoWindow: InfoWindow(title: "Point B"),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueOrange), // Custom marker color
-        ),
-      );
-    });
   }
 
 //kunyare lang to
@@ -195,6 +181,28 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+//remove marker function (still need to be fixed)
+  void removeMarker(LatLng position) {
+    setState(() {
+      markers.removeWhere((marker) => marker.position == position);
+    });
+
+    // Refresh the route with the updated markers
+    List<LatLng> remainingPositions =
+        markers.map((marker) => marker.position).toList();
+
+    // Ensure the user's location is the starting point
+    if (userLocation != null) {
+      remainingPositions.insert(0, userLocation!);
+    }
+
+    if (showRoute == true) {
+      setState(() {
+        _generateRoute(remainingPositions);
+      });
+    }
+  }
+
   Future<void> _fetchDestinations() async {
     try {
       var destinations = await fetchFilteredDestinations(
@@ -202,6 +210,7 @@ class _MapScreenState extends State<MapScreen> {
 
       setState(() {
         markers.clear();
+        showRoute = false;
         List<LatLng> destinationPositions = [];
 
         for (var destination in destinations) {
@@ -209,35 +218,17 @@ class _MapScreenState extends State<MapScreen> {
               LatLng(destination['latitude'], destination['longitude']);
           destinationPositions.add(position);
 
+          final markerId =
+              'destination_marker_${destination['latitude']}_${destination['longitude']}';
+
           markers.add(Marker(
-            markerId: MarkerId(
-                'destination_marker_${destination['latitude']}_${destination['longitude']}'),
+            markerId: MarkerId(markerId),
             position: position,
             onTap: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (context) {
-                  return Padding(
-                    padding: const EdgeInsets.all(40.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(destination['name'],
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 8),
-                        Text("Address: ${destination['address']}"),
-                        SizedBox(height: 8),
-                        Text("Description: ${destination['description']}"),
-                        SizedBox(height: 8),
-                        Text("Contact: ${destination['contact']}"),
-                      ],
-                    ),
-                  );
-                },
-              );
+              setState(() {
+                _selectedDestination =
+                    destination; // Update the selected destination
+              });
             },
           ));
         }
@@ -258,14 +249,43 @@ class _MapScreenState extends State<MapScreen> {
 
         // Generate polylines for the entire route
         _generateRoute(destinationPositions);
+        _selectedDestination = null;
+        polylines.clear();
       });
     } catch (e) {
       print('Error fetching destinations: $e'); //for catching an error bai
     }
   }
 
+//clicking the clear route button
+  void _clearRoute() {
+    setState(() {
+      polylines.clear();
+      showRoute = false;
+    });
+  }
+
+// extended funtion for  generate route button (still need to be fixed)
+  void _onGenerateRouteClicked() {
+    List<LatLng> positions = markers.map((marker) => marker.position).toList();
+
+    // Ensure the user's location is included as the starting point
+    if (userLocation != null) {
+      positions.insert(0, userLocation!);
+    }
+
+    _generateRoute(positions);
+
+    // Set the route visibility to true
+    setState(() {
+      showRoute = true;
+    });
+  }
+
+//for generating the travel route
   Future<void> _generateRoute(List<LatLng> positions) async {
     try {
+      showRoute = true;
       List<LatLng> routePoints = [];
 
       for (int i = 0; i < positions.length - 1; i++) {
@@ -275,13 +295,19 @@ class _MapScreenState extends State<MapScreen> {
         );
 
         if (directions != null) {
+          // Update route points
           routePoints.addAll(directions.polylinePoints
               .map((e) => LatLng(e.latitude, e.longitude))
               .toList());
+
+          // Update the _info variable to hold total distance and duration
+          setState(() {
+            _info = directions;
+          });
         }
       }
 
-      // Add the complete route as a single polyline
+      // Update the polyline with the new route
       setState(() {
         polylines = {
           Polyline(
@@ -297,6 +323,34 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+//for showing the distance and duration
+  Widget _showdistanddur() {
+    if (showRoute != true) {
+      return SizedBox.shrink();
+    } else
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: 6.0,
+          horizontal: 12.0,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(color: Colors.black, width: 2.0),
+        ),
+        child: _info != null
+            ? Text(
+                'Duration: ${_info?.totalDuration}, Distance: ${_info?.totalDistance}',
+                style: const TextStyle(fontSize: 18.0, color: Colors.black),
+              )
+            : Text(
+                'Generating route...',
+                style: const TextStyle(fontSize: 18.0, color: Colors.black),
+              ),
+      );
+  }
+
+//
   void _onFilterChanged(String? type) {
     setState(() {
       _selectedType = type ?? 'All'; // Fallback to 'All' if type is null
@@ -304,40 +358,196 @@ class _MapScreenState extends State<MapScreen> {
     _fetchDestinations(); // Fetch destinations with the selected filter
   }
 
+//destination info when a marker is clicked
+  Widget _buildDestinationDetails() {
+    if (_selectedDestination == null) {
+      return Center(child: Text('Tap on a destination to see details'));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _selectedDestination!['name'] ?? '',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 5),
+          Text(
+            "Address: ${_selectedDestination!['address'] ?? ''}",
+            style: TextStyle(fontSize: 13),
+          ),
+          SizedBox(height: 5),
+          Text(
+            "Description: ${_selectedDestination!['description'] ?? ''}",
+            style: TextStyle(fontSize: 13),
+          ),
+          SizedBox(height: 5),
+          Text(
+            "Contact: ${_selectedDestination!['contact'] ?? ''}",
+            style: TextStyle(fontSize: 13),
+          ),
+          // ElevatedButton(onPressed:() {
+          //   removeMarker(position);
+          // }, child: Text('Remove Destination')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Map Screen'),
-        actions: [
-          if (_locationTypes.isNotEmpty)
-            DropdownButton<String>(
-              value: _selectedType,
-              onChanged: _onFilterChanged,
-              items: _locationTypes.map((type) {
-                return DropdownMenuItem(
-                  value: type,
-                  child: Text(type), // Display the type name
-                );
-              }).toList(),
-            ),
-        ],
-      ),
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          GoogleMap(
-            polylines: polylines,
-            initialCameraPosition: CameraPosition(
-              target: LatLng(14.483173939202675, 121.18757019252007),
-              zoom: 12,
-            ),
-            markers: markers,
-            mapType: MapType.normal,
-            onMapCreated: (GoogleMapController controller) {
-              mapController = controller;
-            },
+
+          // actions: [
+          //   if (_locationTypes.isNotEmpty)
+          //     DropdownButton<String>(
+          //       value: _selectedType,
+          //       onChanged: _onFilterChanged,
+          //       items: _locationTypes.map((type) {
+          //         return DropdownMenuItem(
+          //           value: type,
+          //           child: Text(type), // Display the type name
+          //         );
+          //       }).toList(),
+          //     ),
+          // ],
           ),
+      body: Column(
+        children: [
+          // Row(
+          //   children: [
+          //     ElevatedButton(
+          //       onPressed: () {
+          //         _clearRoute();
+          //       },
+          //       child:
+          //           Text('Clear Route', style: TextStyle(color: Colors.white)),
+          //       style: ElevatedButton.styleFrom(
+          //         backgroundColor: Colors.red,
+          //       ),
+          //     ),
+          //     Spacer(),
+          //     ElevatedButton(
+          //       onPressed: () {
+          //         _onGenerateRouteClicked();
+          //       },
+          //       child: Text('Generate Route',
+          //           style: TextStyle(color: Colors.white)),
+          //       style: ElevatedButton.styleFrom(
+          //         backgroundColor: Colors.blueAccent,
+          //       ),
+          //     ),
+          //   ],
+          // ),
+          Positioned(top: 20, left: 65, child: _showdistanddur()),
+
+          Stack(
+            children: [
+              Center(
+                child: Container(
+                  padding: EdgeInsets.only(top: 50.0),
+                  height: MediaQuery.of(context).size.height *
+                      0.55, // 50% of screen height
+                  width: MediaQuery.of(context).size.width * 0.9,
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: userLocation ?? LatLng(0, 0),
+                      zoom: 12,
+                    ),
+                    markers: markers,
+                    polylines: showRoute
+                        ? polylines
+                        : {}, // Show polylines conditionally
+                    onMapCreated: (GoogleMapController controller) {
+                      mapController = controller;
+                    },
+                  ),
+                ),
+              ),
+              if (_locationTypes.isNotEmpty)
+                Positioned(
+                  top: 60,
+                  child: Container(
+                    padding: EdgeInsets.only(left: 10, right: 10),
+                    margin: EdgeInsets.only(left: 260),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFA52424),
+                      // border: Border.all(color: Colors.black, width: 2.0),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: DropdownButton<String>(
+                      style: TextStyle(color: Colors.white),
+                      value: _selectedType,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedType = newValue!;
+                        });
+                        _onFilterChanged(newValue); // Your filtering logic
+                      },
+                      items: _locationTypes
+                          .map<DropdownMenuItem<String>>((String type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type), // Display the type name
+                        );
+                      }).toList(),
+                      dropdownColor: Color(0xFFA52424),
+                      underline: SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Container(
+            height: MediaQuery.of(context).size.height * 0.20,
+            width: MediaQuery.of(context).size.width * 0.9,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey, width: 1.0),
+            ),
+            child: _buildDestinationDetails(),
+          ),
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  margin: EdgeInsets.only(right: 10),
+                  alignment: Alignment.center,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.arrow_circle_right,
+                      size: 50,
+                      color: Color(0xFFA52424),
+                    ),
+                    onPressed: () {
+                      // Navigator.of(context).push(
+                      //   PageRouteBuilder(
+                      //     pageBuilder: (context, animation, secondaryAnimation) => KindofTrip(),
+                      //     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      //       const begin = Offset(1.0, 0.0); // Slide from the right
+                      //       const end = Offset.zero; // End at the center
+                      //       const curve = Curves.easeInOut;
+                      //       var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      //       var offsetAnimation = animation.drive(tween);
+
+                      //       return SlideTransition(
+                      //         position: offsetAnimation,
+                      //         child: child,
+                      //       );
+                      //     },
+                      //   ),
+                      // );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          )
         ],
       ),
     );
