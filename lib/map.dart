@@ -608,7 +608,6 @@ class _CreateItineraryState extends State<CreateItinerary> {
                               (context, animation, secondaryAnimation) =>
                                   CartScreen(
                             cartItems: _cartItems,
-                            destinations: [],
                           ),
                           transitionsBuilder:
                               (context, animation, secondaryAnimation, child) {

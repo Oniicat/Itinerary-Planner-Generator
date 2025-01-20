@@ -24,6 +24,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
   Set<Polyline> polylines = {};
   bool showRoute = false;
   Map<String, dynamic>? _selectedDestination;
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -34,13 +35,90 @@ class _MapwithitemsState extends State<Mapwithitems> {
     //_onGenerateRouteClicked();
   }
 
+  Future<Position> getCurrentPosition() async {
+    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceEnabled) {
+      throw Exception("Location services are disabled. Please enable them.");
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception("Location permissions are denied.");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception("Location permissions are permanently denied.");
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  void _onGenerateRouteClicked() {
+    List<LatLng> positions = markers.map((marker) => marker.position).toList();
+
+    // Ensure the user's location is included as the starting point
+    if (userLocation != null) {
+      positions.insert(0, userLocation!);
+    }
+
+    _generateRoute(positions);
+
+    // Set the route visibility to true
+    setState(() {
+      showRoute = true;
+    });
+  }
+
+  Future<void> fetchAndShowCurrentLocation() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      Position position = await getCurrentPosition();
+      LatLng userLocation = LatLng(position.latitude, position.longitude);
+
+      // Update markers and move camera
+      setState(() {
+        markers.add(
+          Marker(
+            markerId: MarkerId("MyLocation"),
+            position: userLocation,
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
+        );
+      });
+
+      mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(userLocation, 15),
+      );
+    } catch (e) {
+      // Show error as a snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
 //kunyare lang to
   Future<void> _getUserLocation() async {
+    //Position position = await getCurrentPosition();
     try {
       // Fetch current location (for demonstration purposes)
       setState(() {
-        userLocation = LatLng(
-            14.499111632246139, 121.18714131749572); // Example coordinates
+        //Position position = await getCurrentPosition();
+        userLocation = //LatLng(position.latitude, position.longitude);
+            LatLng(
+                14.499111632246139, 121.18714131749572); // Example coordinates
 
         // Add marker for user's location
         markers.add(
@@ -63,10 +141,6 @@ class _MapwithitemsState extends State<Mapwithitems> {
     } catch (e) {
       print("Error fetching user location: $e");
     }
-  }
-
-  Future<void> _initializeScreen() async {
-    await _initializemap();
   }
 
   Future<void> _initializemap() async {
@@ -241,6 +315,13 @@ class _MapwithitemsState extends State<Mapwithitems> {
                   ),
                 ),
               ),
+              ElevatedButton(
+                onPressed: () async {
+                  await fetchAndShowCurrentLocation();
+                  _onGenerateRouteClicked();
+                },
+                child: Icon(Icons.my_location, size: 30, color: Colors.red),
+              ),
             ],
           ),
           SizedBox(height: 20),
@@ -280,5 +361,109 @@ class _MapwithitemsState extends State<Mapwithitems> {
         ],
       ),
     );
+  }
+}
+
+class GetUserLocation extends StatefulWidget {
+  @override
+  State<GetUserLocation> createState() => _GetUserLocationState();
+}
+
+class _GetUserLocationState extends State<GetUserLocation> {
+  LatLng initialLocation = LatLng(14.499157, 121.187020);
+  late GoogleMapController googleMapController;
+  Set<Marker> markers = {};
+  bool isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Google Map Example"),
+        backgroundColor: Colors.blue,
+      ),
+      body: Stack(
+        children: [
+          GoogleMap(
+            myLocationButtonEnabled: false,
+            markers: markers,
+            onMapCreated: (GoogleMapController controller) {
+              googleMapController = controller;
+            },
+            initialCameraPosition:
+                CameraPosition(target: initialLocation, zoom: 13),
+          ),
+          if (isLoading)
+            Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.blue,
+        onPressed: () async {
+          await fetchAndShowCurrentLocation();
+        },
+        child: Icon(Icons.my_location, size: 30, color: Colors.white),
+      ),
+    );
+  }
+
+  Future<void> fetchAndShowCurrentLocation() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      Position position = await getCurrentPosition();
+      LatLng userLocation = LatLng(position.latitude, position.longitude);
+
+      // Update markers and move camera
+      setState(() {
+        markers = {
+          Marker(
+            markerId: MarkerId("MyLocation"),
+            position: userLocation,
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
+        };
+      });
+
+      googleMapController.animateCamera(
+        CameraUpdate.newLatLngZoom(userLocation, 15),
+      );
+    } catch (e) {
+      // Show error as a snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<Position> getCurrentPosition() async {
+    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceEnabled) {
+      throw Exception("Location services are disabled. Please enable them.");
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception("Location permissions are denied.");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception("Location permissions are permanently denied.");
+    }
+
+    return await Geolocator.getCurrentPosition();
   }
 }
