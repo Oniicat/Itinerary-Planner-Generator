@@ -1,7 +1,6 @@
-import 'package:firestore_basics/map.dart';
 import 'package:flutter/material.dart';
-import 'package:firestore_basics/map_sample.dart';
 import 'package:firestore_basics/showitinerary.dart';
+import 'package:firestore_basics/setdays.dart';
 
 class CartScreen extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
@@ -110,7 +109,7 @@ class CartScreenState extends State<CartScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          Mapwithitems(cartItems: widget.cartItems),
+                          Setdays(cartItems: widget.cartItems),
                     ),
                   );
                 },

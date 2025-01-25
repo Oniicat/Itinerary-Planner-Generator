@@ -1,11 +1,8 @@
 import 'package:firestore_basics/directions_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firestore_basics/directions_model.dart';
-import 'package:firestore_basics/cart.dart';
 
 class Mapwithitems extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems; // Accept destinations here
@@ -18,11 +15,11 @@ class Mapwithitems extends StatefulWidget {
 
 class _MapwithitemsState extends State<Mapwithitems> {
   GoogleMapController? mapController;
-  Set<Marker> markers = {};
-  LatLng? userLocation;
+  Set<Marker> markers = {}; // Markers for destinations
+  LatLng? userLocation; // User's location
   Directions? _info; // Route information
-  Set<Polyline> polylines = {};
-  bool showRoute = false;
+  Set<Polyline> polylines = {}; // Polylines for the route
+  bool showRoute = false; // Toggle to show/hide route
   Map<String, dynamic>? _selectedDestination;
   bool isLoading = false;
 
@@ -31,7 +28,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
     super.initState();
     _initializemap();
     _getUserLocation();
-    _generateRoute([]);
+    //_generateRoute([]);
     //_onGenerateRouteClicked();
   }
 
@@ -92,6 +89,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 BitmapDescriptor.hueOrange),
           ),
         );
+        _generateRoute([]);
       });
 
       mapController?.animateCamera(
@@ -282,81 +280,184 @@ class _MapwithitemsState extends State<Mapwithitems> {
     );
   }
 
+  void _reorderItems(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final item = widget.cartItems.removeAt(oldIndex);
+      widget.cartItems.insert(newIndex, item);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          Positioned(top: 20, left: 65, child: _showdistanddur()),
-          SizedBox(height: 10),
-          Stack(
-            children: [
-              Center(
-                child: Container(
-                  //padding: EdgeInsets.only(top: 50.0),
-                  height: MediaQuery.of(context).size.height *
-                      0.5, // 50% of screen height
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: userLocation ?? LatLng(0, 0),
-                      zoom: 12,
+          // Google Map
+          Center(
+            child: Container(
+              padding: EdgeInsets.only(bottom: 120),
+              height: MediaQuery.of(context).size.height * 0.7,
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: userLocation ?? LatLng(0, 0),
+                  zoom: 12,
+                ),
+                markers: markers,
+                polylines: showRoute ? polylines : {},
+                onMapCreated: (GoogleMapController controller) {
+                  mapController = controller;
+                },
+              ),
+            ),
+          ),
+          // Back Button
+          Positioned(
+            top: 50,
+            left: 10,
+            child: IconButton(
+              icon: Icon(
+                Icons.arrow_circle_left,
+                size: 50,
+                color: Color(0xFFA52424),
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ),
+          // Fetch Location Button
+          Positioned(
+            top: 140,
+            left: 20,
+            child: ElevatedButton(
+              onPressed: () async {
+                await fetchAndShowCurrentLocation();
+                //_onGenerateRouteClicked();
+              },
+              child: Icon(Icons.my_location, size: 30, color: Colors.red),
+            ),
+          ),
+          // Draggable Scrollable Sheet
+          DraggableScrollableSheet(
+            initialChildSize: 0.3,
+            minChildSize: 0.2,
+            maxChildSize: 0.5,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 5.0,
+                      spreadRadius: 2.0,
                     ),
-                    markers: markers,
-                    polylines: showRoute
-                        ? polylines
-                        : {}, // Show polylines conditionally
-                    onMapCreated: (GoogleMapController controller) {
-                      mapController = controller;
-                    },
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Column(
+                    children: [
+                      // Drag handle
+                      Container(
+                        margin: EdgeInsets.symmetric(vertical: 10),
+                        height: 5,
+                        width: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      // Content
+                      Column(
+                        children: [
+                          Container(
+                            alignment: Alignment.topLeft,
+                            padding: EdgeInsets.only(left: 40),
+                            child: Text(
+                              'Name your trip',
+                              style: TextStyle(
+                                  fontSize: 25, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.8,
+                            height: 40,
+                            child: TextField(
+                              decoration: InputDecoration(
+                                hintText: 'Name your trip',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 25),
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.4,
+                            child: widget.cartItems.isEmpty
+                                ? Center(child: Text("No items in the cart"))
+                                : ReorderableListView.builder(
+                                    itemCount: widget.cartItems.length,
+                                    onReorder: _reorderItems,
+                                    itemBuilder: (context, index) {
+                                      final item = widget.cartItems[index];
+                                      return Container(
+                                        key: ValueKey(
+                                            item), // Unique key for each item
+                                        margin: EdgeInsets.symmetric(
+                                            vertical: 5,
+                                            horizontal: 10), // Add spacing
+                                        padding: EdgeInsets.all(
+                                            10), // Inner padding for content
+                                        decoration: BoxDecoration(
+                                          color:
+                                              Colors.white, // Background color
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                              color: Colors.grey, width: 1),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Colors.black.withOpacity(0.1),
+                                              blurRadius: 5,
+                                              offset: Offset(
+                                                  0, 2), // Shadow position
+                                            ),
+                                          ],
+                                        ),
+                                        child: ListTile(
+                                          title: Text(item['name']),
+                                          subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(item['address'] ??
+                                                  "No address provided"),
+                                            ],
+                                          ),
+                                          // trailing: IconButton(
+                                          //   icon: Icon(Icons.delete),
+                                          //   onPressed: () =>
+                                          //       _removeFromCart(item),
+                                          // ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  await fetchAndShowCurrentLocation();
-                  _onGenerateRouteClicked();
-                },
-                child: Icon(Icons.my_location, size: 30, color: Colors.red),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-          Container(
-            height: MediaQuery.of(context).size.height * 0.20,
-            width: MediaQuery.of(context).size.width * 0.9,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey, width: 1.0),
-            ),
-            child: _buildDestinationDetails(),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_circle_left,
-                  size: 50,
-                  color: Color(0xFFA52424),
-                ),
-                onPressed: () {
-                  Navigator.pop(context); // Simple back navigation
-                },
-              ),
-              SizedBox(width: 20),
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_circle_right,
-                  size: 50,
-                  color: Color(0xFFA52424),
-                ),
-                onPressed: () {},
-              ),
-            ],
+              );
+            },
           ),
         ],
       ),
