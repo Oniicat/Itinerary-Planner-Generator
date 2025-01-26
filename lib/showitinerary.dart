@@ -2,7 +2,9 @@ import 'package:firestore_basics/directions_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:async'; //for stream subscription
 import 'package:firestore_basics/directions_model.dart';
+import 'package:location/location.dart';
 
 class Mapwithitems extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems; // Accept destinations here
@@ -22,14 +24,24 @@ class _MapwithitemsState extends State<Mapwithitems> {
   bool showRoute = false; // Toggle to show/hide route
   Map<String, dynamic>? _selectedDestination;
   bool isLoading = false;
+  StreamSubscription<Position>?
+      positionStream; //live tracking the user position
 
+  LocationData? currentLocation;
   @override
   void initState() {
     super.initState();
     _initializemap();
     _getUserLocation();
-    //_generateRoute([]);
+    //_getcurrentLocation();
+    // _generateRoute([]);
     //_onGenerateRouteClicked();
+  }
+
+  @override
+  void dispose() {
+    positionStream?.cancel(); // Cancel the stream when the widget is disposed
+    super.dispose();
   }
 
   Future<Position> getCurrentPosition() async {
@@ -53,6 +65,59 @@ class _MapwithitemsState extends State<Mapwithitems> {
     return await Geolocator.getCurrentPosition();
   }
 
+  void _getCurrentLocation() {
+    Location location = Location();
+
+    // Fetch the initial location
+    location.getLocation().then((locationData) {
+      setState(() {
+        currentLocation = locationData;
+
+        // Add the initial marker for the user's location
+        markers.add(
+          Marker(
+            markerId: MarkerId("MyLocation"),
+            position: LatLng(
+              currentLocation!.latitude!,
+              currentLocation!.longitude!,
+            ),
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
+        );
+        _generateRoute([]);
+      });
+    });
+
+    // Listen for location changes
+    location.onLocationChanged.listen((newLoc) {
+      setState(() {
+        currentLocation = newLoc;
+
+        markers.removeWhere((marker) => marker.markerId.value == "MyLocation");
+        // Update the marker's position dynamically
+
+        markers.add(
+          Marker(
+            markerId: MarkerId("MyLocation"),
+            position: LatLng(
+              currentLocation!.latitude!,
+              currentLocation!.longitude!,
+            ),
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
+        );
+        userLocation = LatLng(
+          currentLocation!.latitude!,
+          currentLocation!.longitude!,
+        );
+      });
+    });
+  }
+
   void _onGenerateRouteClicked() {
     List<LatLng> positions = markers.map((marker) => marker.position).toList();
 
@@ -68,6 +133,36 @@ class _MapwithitemsState extends State<Mapwithitems> {
       showRoute = true;
     });
   }
+
+  // void startLiveTracking() {
+  //   positionStream = Geolocator.getPositionStream(
+  //     locationSettings: LocationSettings(
+  //       accuracy: LocationAccuracy.high, // High accuracy for real-time tracking
+  //       distanceFilter: 1, // Minimum movement in meters to trigger an update
+  //     ),
+  //   ).listen((Position position) {
+  //     LatLng userLocation = LatLng(position.latitude, position.longitude);
+
+  //     // Update marker and camera position
+  //     setState(() {
+  //       markers.add(
+  //         Marker(
+  //           markerId: MarkerId("MyLocation"),
+  //           position: userLocation,
+  //           infoWindow: InfoWindow(title: "Your Location"),
+  //           icon: BitmapDescriptor.defaultMarkerWithHue(
+  //               BitmapDescriptor.hueOrange),
+  //         ),
+  //       );
+  //       _generateRoute([]);
+  //     });
+
+  //     // Optionally move the camera to follow the user
+  //     mapController?.animateCamera(
+  //       CameraUpdate.newLatLng(userLocation),
+  //     );
+  //   });
+  // }
 
   Future<void> fetchAndShowCurrentLocation() async {
     setState(() {
@@ -119,15 +214,15 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 14.499111632246139, 121.18714131749572); // Example coordinates
 
         // Add marker for user's location
-        markers.add(
-          Marker(
-            markerId: MarkerId("user_location"),
-            position: userLocation!,
-            infoWindow: InfoWindow(title: "Your Location"),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueBlue), // Custom marker color
-          ),
-        );
+        // markers.add(
+        //   Marker(
+        //     markerId: MarkerId("user_location"),
+        //     position: userLocation!,
+        //     infoWindow: InfoWindow(title: "Your Location"),
+        //     icon: BitmapDescriptor.defaultMarkerWithHue(
+        //         BitmapDescriptor.hueBlue), // Custom marker color
+        //   ),
+        // );
       });
 
       // Move the camera to the user's location (ensure it's not null)
@@ -295,6 +390,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
     return Scaffold(
       body: Stack(
         children: [
+          Positioned(top: 65, left: 65, child: _showdistanddur()),
           // Google Map
           Center(
             child: Container(
@@ -334,8 +430,8 @@ class _MapwithitemsState extends State<Mapwithitems> {
             top: 140,
             left: 20,
             child: ElevatedButton(
-              onPressed: () async {
-                await fetchAndShowCurrentLocation();
+              onPressed: () {
+                _getCurrentLocation();
                 //_onGenerateRouteClicked();
               },
               child: Icon(Icons.my_location, size: 30, color: Colors.red),
@@ -407,16 +503,12 @@ class _MapwithitemsState extends State<Mapwithitems> {
                                     itemBuilder: (context, index) {
                                       final item = widget.cartItems[index];
                                       return Container(
-                                        key: ValueKey(
-                                            item), // Unique key for each item
+                                        key: ValueKey(item),
                                         margin: EdgeInsets.symmetric(
-                                            vertical: 5,
-                                            horizontal: 10), // Add spacing
-                                        padding: EdgeInsets.all(
-                                            10), // Inner padding for content
+                                            vertical: 5, horizontal: 10),
+                                        padding: EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color:
-                                              Colors.white, // Background color
+                                          color: Colors.white,
                                           borderRadius:
                                               BorderRadius.circular(10),
                                           border: Border.all(
@@ -426,8 +518,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                                               color:
                                                   Colors.black.withOpacity(0.1),
                                               blurRadius: 5,
-                                              offset: Offset(
-                                                  0, 2), // Shadow position
+                                              offset: Offset(0, 2),
                                             ),
                                           ],
                                         ),

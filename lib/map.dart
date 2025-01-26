@@ -91,7 +91,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
     _getUserLocation();
   }
 
-  //function ng add to cart bai
+  //function ng add to cart
   void _addToCart(Map<String, dynamic> destination) {
     if (_cartItems.any((item) =>
         item['name'] ==

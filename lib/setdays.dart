@@ -37,11 +37,18 @@ class _SetdaysState extends State<Setdays> {
         int tempDays = numberOfDays; // Temporary variable for dialog input
         return AlertDialog(
           title: Text('Set Number of Days'),
-          content: TextField(
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(hintText: 'Enter number of days'),
+          content: DropdownButton<int>(
+            value: tempDays,
+            items: List.generate(7, (index) => index + 1)
+                .map((day) => DropdownMenuItem(
+                      value: day,
+                      child: Text('$day days'),
+                    ))
+                .toList(),
             onChanged: (value) {
-              tempDays = int.tryParse(value) ?? numberOfDays;
+              if (value != null) {
+                tempDays = value;
+              }
             },
           ),
           actions: [
@@ -68,6 +75,16 @@ class _SetdaysState extends State<Setdays> {
         );
       },
     );
+  }
+
+  // extension function to check if a destination is already in any day
+  bool isDestinationAlreadyAdded(Map<String, dynamic> destination) {
+    for (var dayDestinations in dailyDestinations.values) {
+      if (dayDestinations.any((d) => d['name'] == destination['name'])) {
+        return true; // Destination is already added
+      }
+    }
+    return false;
   }
 
   void _showDayDetails(int day) {
@@ -114,15 +131,28 @@ class _SetdaysState extends State<Setdays> {
                   onPressed: () async {
                     // Fetch destinations from the cart
                     List<Map<String, dynamic>> cartItems = _fetchCartItems()
-                        .where((cartItem) => !destinations.any((destination) =>
-                            destination['name'] == cartItem['name']))
+                        .where((cartItem) => !isDestinationAlreadyAdded(
+                            cartItem)) // Exclude already added destinations
                         .toList();
 
                     if (cartItems.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('No more destinations to add.')),
+                      return showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            content: Text('No more destinations to add.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context); // Close the dialog
+                                },
+                                child: Text('OK'),
+                              ),
+                            ],
+                          );
+                        },
                       );
-                      return;
+                      ;
                     }
 
                     // Show a dialog to select items from the filtered cart
@@ -160,14 +190,6 @@ class _SetdaysState extends State<Setdays> {
                                         dailyDestinations[day] = destinations;
                                       });
 
-                                      // Remove the item from the cart (widget.cartItems)
-                                      // setState(() {
-                                      //   widget.cartItems.removeWhere(
-                                      //       (cartItem) =>
-                                      //           cartItem['name'] ==
-                                      //           item['name']);
-                                      // });
-
                                       Navigator.pop(context); // Close dialog
                                     },
                                   ),
@@ -203,6 +225,7 @@ class _SetdaysState extends State<Setdays> {
     return widget.cartItems;
   }
 
+//not used yet
   void _updateMapForSelectedDay() {
     setState(() {
       markers.clear();
@@ -228,6 +251,7 @@ class _SetdaysState extends State<Setdays> {
     });
   }
 
+//arrangement of buttons of days
   Widget _buildDayButtons() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -238,6 +262,14 @@ class _SetdaysState extends State<Setdays> {
           return Padding(
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(
+                  selectedDay == day ? Color(0xFFA52424) : Colors.white,
+                ),
+                foregroundColor: MaterialStateProperty.all(
+                  selectedDay == day ? Colors.white : Colors.red,
+                ),
+              ),
               onPressed: () {
                 setState(() {
                   selectedDay = day;
@@ -522,27 +554,42 @@ class _SetdaysState extends State<Setdays> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Plan Your Trip'),
-        actions: [
-          IconButton(
-            onPressed: _setDays,
-            icon: Icon(Icons.calendar_today),
-          ),
-        ],
       ),
       body: Column(
         children: [
+          Padding(
+            padding: EdgeInsetsDirectional.symmetric(horizontal: 30),
+            child: Row(
+              children: [
+                Container(
+                  child: Text(
+                    'Set Days',
+                    style: TextStyle(fontSize: 20),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _setDays,
+                  icon: Icon(Icons.calendar_today),
+                ),
+              ],
+            ),
+          ),
           if (numberOfDays > 0) _buildDayButtons(),
-          Expanded(
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: userLocation ?? LatLng(0, 0),
-                zoom: 12,
+          Center(
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: userLocation ?? LatLng(0, 0),
+                  zoom: 12,
+                ),
+                markers: markers,
+                polylines: polylines,
+                onMapCreated: (GoogleMapController controller) {
+                  mapController = controller;
+                },
               ),
-              markers: markers,
-              polylines: polylines,
-              onMapCreated: (GoogleMapController controller) {
-                mapController = controller;
-              },
             ),
           ),
         ],

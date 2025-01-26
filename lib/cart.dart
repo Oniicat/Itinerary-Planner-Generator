@@ -109,7 +109,7 @@ class CartScreenState extends State<CartScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          Setdays(cartItems: widget.cartItems),
+                          Mapwithitems(cartItems: widget.cartItems),
                     ),
                   );
                 },
