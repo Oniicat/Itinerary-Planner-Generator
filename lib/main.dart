@@ -1,4 +1,7 @@
 import 'package:firestore_basics/Ui/navbar.dart';
+import 'package:firestore_basics/map.dart';
+import 'package:firestore_basics/setdays.dart';
+import 'package:firestore_basics/showitinerary.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -26,7 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      home: NavBar(),
+      home: CreateItinerary(),
     );
   }
 }

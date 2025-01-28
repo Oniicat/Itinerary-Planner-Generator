@@ -30,50 +30,31 @@ class _SetdaysState extends State<Setdays> {
   int numberOfDays = 0; // Total days
   int selectedDay = 0; // Currently selected day
 
-  void _setDays() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        int tempDays = numberOfDays; // Temporary variable for dialog input
-        return AlertDialog(
-          title: Text('Set Number of Days'),
-          content: DropdownButton<int>(
-            value: tempDays,
-            items: List.generate(7, (index) => index + 1)
-                .map((day) => DropdownMenuItem(
-                      value: day,
-                      child: Text('$day days'),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                tempDays = value;
-              }
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  numberOfDays = tempDays;
-                  dailyDestinations.clear();
-                  for (int i = 1; i <= numberOfDays; i++) {
-                    dailyDestinations[i] = [];
-                  }
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Set'),
-            ),
-          ],
-        );
-      },
+  Widget _buildDayDropdown() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        DropdownButton<int>(
+          value: (numberOfDays >= 1 && numberOfDays <= 7) ? numberOfDays : 1,
+          items: List.generate(7, (index) => index + 1)
+              .map((day) => DropdownMenuItem(
+                    value: day,
+                    child: Text('$day days'),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                numberOfDays = value; // Update the number of days
+                dailyDestinations.clear(); // Clear and reset destinations
+                for (int i = 1; i <= numberOfDays; i++) {
+                  dailyDestinations[i] = [];
+                }
+              });
+            }
+          },
+        ),
+      ],
     );
   }
 
@@ -87,135 +68,145 @@ class _SetdaysState extends State<Setdays> {
     return false;
   }
 
-  void _showDayDetails(int day) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            List<Map<String, dynamic>> destinations = dailyDestinations[day]!;
+  Widget showDayDetails(int day) {
+    List<Map<String, dynamic>> destinations = dailyDestinations[day]!;
 
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    'Destinations for Day $day',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Destinations for Day $day',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            if (destinations.isEmpty)
+              Center(
+                child: Text(
+                  'No destinations added yet.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: destinations.length,
-                    itemBuilder: (context, index) {
-                      var destination = destinations[index];
-                      return ListTile(
-                        title: Text(destination['name']),
-                        subtitle: Text(destination['address']),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () {
-                            setModalState(() {
-                              destinations.removeAt(index);
-                            });
-                            setState(() {
-                              dailyDestinations[day] = destinations;
-                            });
-                          },
-                        ),
-                      );
-                    },
+              ),
+            ListView.builder(
+              shrinkWrap: true, // Ensures the list takes only the needed height
+              physics:
+                  NeverScrollableScrollPhysics(), // Avoids nested scrolling issues
+              itemCount: destinations.length,
+              itemBuilder: (context, index) {
+                var destination = destinations[index];
+                return Card(
+                  color: Colors.white,
+                  margin: EdgeInsets.symmetric(vertical: 4.0),
+                  child: ListTile(
+                    title: Text(destination['name']),
+                    subtitle: Text(destination['address']),
+                    trailing: IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () {
+                        // Remove the destination
+                        setState(() {
+                          destinations.removeAt(index);
+                          dailyDestinations[day] = destinations;
+                        });
+                      },
+                    ),
                   ),
+                );
+              },
+            ),
+            SizedBox(height: 16),
+            Center(
+              child: ElevatedButton(
+                style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all(Color(0xFFA52424)),
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    // Fetch destinations from the cart
-                    List<Map<String, dynamic>> cartItems = _fetchCartItems()
-                        .where((cartItem) => !isDestinationAlreadyAdded(
-                            cartItem)) // Exclude already added destinations
-                        .toList();
+                onPressed: () async {
+                  // Fetch destinations from the cart
+                  List<Map<String, dynamic>> cartItems = _fetchCartItems()
+                      .where((cartItem) => !isDestinationAlreadyAdded(
+                          cartItem)) // Exclude already added destinations
+                      .toList();
 
-                    if (cartItems.isEmpty) {
-                      return showDialog(
-                        context: context,
-                        builder: (context) {
-                          return AlertDialog(
-                            content: Text('No more destinations to add.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context); // Close the dialog
-                                },
-                                child: Text('OK'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                      ;
-                    }
-
-                    // Show a dialog to select items from the filtered cart
+                  if (cartItems.isEmpty) {
                     showDialog(
                       context: context,
-                      builder: (BuildContext context) {
+                      builder: (context) {
                         return AlertDialog(
-                          title: Text('Select Destination from Cart'),
-                          content: Container(
-                            width: double.maxFinite,
-                            child: ListView.builder(
-                              itemCount: cartItems.length,
-                              itemBuilder: (context, index) {
-                                final item = cartItems[index];
-                                return ListTile(
-                                  title: Text(item['name']),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(item['address'] ??
-                                          "No address provided"),
-                                      Text("Latitude: ${item['latitude']}"),
-                                      Text("Longitude: ${item['longitude']}"),
-                                    ],
-                                  ),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.add),
-                                    onPressed: () {
-                                      // Add the selected cart item to the day's destinations
-                                      setModalState(() {
-                                        destinations.add(item);
-                                      });
-                                      setState(() {
-                                        dailyDestinations[day] = destinations;
-                                      });
-
-                                      Navigator.pop(context); // Close dialog
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+                          content: Text('No more destinations to add.'),
                           actions: [
                             TextButton(
                               onPressed: () {
-                                Navigator.pop(context); // Close dialog
+                                Navigator.pop(context); // Close the dialog
                               },
-                              child: Text('Close'),
+                              child: Text('OK'),
                             ),
                           ],
                         );
                       },
                     );
-                  },
-                  child: Text('Add Destination from Cart'),
+                    return;
+                  }
+
+                  // Show a dialog to select items from the filtered cart
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text('Select Destination from Cart'),
+                        content: Container(
+                          width: double.maxFinite,
+                          child: ListView.builder(
+                            itemCount: cartItems.length,
+                            itemBuilder: (context, index) {
+                              final item = cartItems[index];
+                              return ListTile(
+                                title: Text(item['name']),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item['address'] ??
+                                        "No address provided"),
+                                  ],
+                                ),
+                                trailing: IconButton(
+                                  icon: Icon(Icons.add),
+                                  onPressed: () {
+                                    // Add the selected cart item to the day's destinations
+                                    setState(() {
+                                      destinations.add(item);
+                                      dailyDestinations[day] = destinations;
+                                    });
+
+                                    Navigator.pop(context); // Close dialog
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close dialog
+                            },
+                            child: Text('Close'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                child: Text(
+                  'Add Destination from Cart',
+                  style: TextStyle(color: Colors.white),
                 ),
-              ],
-            );
-          },
-        );
-      },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -267,14 +258,14 @@ class _SetdaysState extends State<Setdays> {
                   selectedDay == day ? Color(0xFFA52424) : Colors.white,
                 ),
                 foregroundColor: MaterialStateProperty.all(
-                  selectedDay == day ? Colors.white : Colors.red,
+                  selectedDay == day ? Colors.white : Color(0xFFA52424),
                 ),
               ),
               onPressed: () {
                 setState(() {
                   selectedDay = day;
                 });
-                _showDayDetails(day);
+                showDayDetails(day);
               },
               child: Text('Day $day'),
             ),
@@ -567,31 +558,22 @@ class _SetdaysState extends State<Setdays> {
                     style: TextStyle(fontSize: 20),
                   ),
                 ),
-                IconButton(
-                  onPressed: _setDays,
-                  icon: Icon(Icons.calendar_today),
+                Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: _buildDayDropdown(),
                 ),
               ],
             ),
           ),
           if (numberOfDays > 0) _buildDayButtons(),
-          Center(
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
+          if (selectedDay > 0)
+            Container(
               height: MediaQuery.of(context).size.height * 0.5,
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: userLocation ?? LatLng(0, 0),
-                  zoom: 12,
-                ),
-                markers: markers,
-                polylines: polylines,
-                onMapCreated: (GoogleMapController controller) {
-                  mapController = controller;
-                },
-              ),
+              width: MediaQuery.of(context).size.width * 0.7,
+              decoration:
+                  BoxDecoration(border: Border.all(color: Colors.black)),
+              child: showDayDetails(selectedDay),
             ),
-          ),
         ],
       ),
     );

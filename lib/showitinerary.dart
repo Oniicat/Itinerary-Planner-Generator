@@ -2,7 +2,6 @@ import 'package:firestore_basics/directions_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'dart:async'; //for stream subscription
 import 'package:firestore_basics/directions_model.dart';
 import 'package:location/location.dart';
 
@@ -24,10 +23,267 @@ class _MapwithitemsState extends State<Mapwithitems> {
   bool showRoute = false; // Toggle to show/hide route
   Map<String, dynamic>? _selectedDestination;
   bool isLoading = false;
-  StreamSubscription<Position>?
-      positionStream; //live tracking the user position
-
   LocationData? currentLocation;
+
+  //add days
+  List<Map<String, dynamic>> cartItems = []; // Main cart items
+  Map<int, List<Map<String, dynamic>>> dailyDestinations =
+      {}; // Destinations grouped by day
+  int numberOfDays = 0; // Total days
+  int selectedDay = 0; // Currently selected day
+
+  Widget _buildDayDropdown() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        DropdownButton<int>(
+          value: (numberOfDays >= 1 && numberOfDays <= 7) ? numberOfDays : 1,
+          items: List.generate(7, (index) => index + 1)
+              .map((day) => DropdownMenuItem(
+                    value: day,
+                    child: Text('$day'),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                numberOfDays = value; // Update the number of days
+                dailyDestinations.clear(); // Clear and reset destinations
+                for (int i = 1; i <= numberOfDays; i++) {
+                  dailyDestinations[i] = [];
+                }
+              });
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  // extension function to check if a destination is already in any day
+  bool isDestinationAlreadyAdded(Map<String, dynamic> destination) {
+    for (var dayDestinations in dailyDestinations.values) {
+      if (dayDestinations.any((d) => d['name'] == destination['name'])) {
+        return true; // Destination is already added
+      }
+    }
+    return false;
+  }
+
+  Widget showDayDetails(int day) {
+    List<Map<String, dynamic>> destinations = dailyDestinations[day]!;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Destinations for Day $day',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (destinations.isEmpty)
+              Center(
+                child: Text(
+                  'No destinations added yet.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ),
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  // Fix index adjustment during reordering
+                  if (newIndex > oldIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = destinations.removeAt(oldIndex);
+                  destinations.insert(newIndex, item);
+
+                  // Update the day's destinations
+                  dailyDestinations[day] = destinations;
+                });
+              },
+              children: List.generate(destinations.length, (index) {
+                var destination = destinations[index];
+                return Card(
+                  key: ValueKey(destination),
+                  color: Colors.white,
+                  margin: EdgeInsets.symmetric(vertical: 4.0),
+                  child: ListTile(
+                    title: Text(destination['name']),
+                    subtitle: Text(destination['address']),
+                    trailing: IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () {
+                        setState(() {
+                          destinations.removeAt(index);
+                          dailyDestinations[day] = destinations;
+                        });
+                      },
+                    ),
+                  ),
+                );
+              }),
+            ),
+            SizedBox(height: 16),
+            Center(
+              child: ElevatedButton(
+                style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all(Color(0xFFA52424)),
+                ),
+                onPressed: () async {
+                  List<Map<String, dynamic>> cartItems = _fetchCartItems()
+                      .where((cartItem) => !isDestinationAlreadyAdded(cartItem))
+                      .toList();
+
+                  if (cartItems.isEmpty) {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          content: Text('No more destinations to add.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: Text('OK'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                    return;
+                  }
+
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text('Select Destination from Cart'),
+                        content: Container(
+                          width: double.maxFinite,
+                          child: ListView.builder(
+                            itemCount: cartItems.length,
+                            itemBuilder: (context, index) {
+                              final item = cartItems[index];
+                              return ListTile(
+                                title: Text(item['name']),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item['address'] ??
+                                        "No address provided"),
+                                  ],
+                                ),
+                                trailing: IconButton(
+                                  icon: Icon(Icons.add),
+                                  onPressed: () {
+                                    setState(() {
+                                      destinations.add(item);
+                                      dailyDestinations[day] = destinations;
+                                    });
+
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text('Close'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                child: Text(
+                  'Add Destination from Cart',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+// function for transfering the items from the cart
+  List<Map<String, dynamic>> _fetchCartItems() {
+    // Replace this with your actual logic to fetch cart items
+    return widget.cartItems;
+  }
+
+//not used yet
+  void _updateMapForSelectedDay() {
+    setState(() {
+      markers.clear();
+      polylines.clear();
+
+      List<Map<String, dynamic>> destinations =
+          dailyDestinations[selectedDay] ?? [];
+
+      for (var destination in destinations) {
+        LatLng position =
+            LatLng(destination['latitude'], destination['longitude']);
+        markers.add(Marker(
+          markerId: MarkerId(
+              'marker_${destination['latitude']}_${destination['longitude']}'),
+          position: position,
+          infoWindow: InfoWindow(title: destination['name']),
+        ));
+      }
+
+      _generateRoute(destinations
+          .map((d) => LatLng(d['latitude'], d['longitude']))
+          .toList());
+    });
+  }
+
+//arrangement of buttons of days
+  Widget _buildDayButtons() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(numberOfDays, (index) {
+          int day = index + 1;
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(
+                  selectedDay == day ? Color(0xFFA52424) : Colors.white,
+                ),
+                foregroundColor: MaterialStateProperty.all(
+                  selectedDay == day ? Colors.white : Color(0xFFA52424),
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  selectedDay = day;
+                });
+                showDayDetails(day);
+                _updateMapForSelectedDay();
+              },
+              child: Text('Day $day'),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -36,12 +292,6 @@ class _MapwithitemsState extends State<Mapwithitems> {
     //_getcurrentLocation();
     // _generateRoute([]);
     //_onGenerateRouteClicked();
-  }
-
-  @override
-  void dispose() {
-    positionStream?.cancel(); // Cancel the stream when the widget is disposed
-    super.dispose();
   }
 
   Future<Position> getCurrentPosition() async {
@@ -133,36 +383,6 @@ class _MapwithitemsState extends State<Mapwithitems> {
       showRoute = true;
     });
   }
-
-  // void startLiveTracking() {
-  //   positionStream = Geolocator.getPositionStream(
-  //     locationSettings: LocationSettings(
-  //       accuracy: LocationAccuracy.high, // High accuracy for real-time tracking
-  //       distanceFilter: 1, // Minimum movement in meters to trigger an update
-  //     ),
-  //   ).listen((Position position) {
-  //     LatLng userLocation = LatLng(position.latitude, position.longitude);
-
-  //     // Update marker and camera position
-  //     setState(() {
-  //       markers.add(
-  //         Marker(
-  //           markerId: MarkerId("MyLocation"),
-  //           position: userLocation,
-  //           infoWindow: InfoWindow(title: "Your Location"),
-  //           icon: BitmapDescriptor.defaultMarkerWithHue(
-  //               BitmapDescriptor.hueOrange),
-  //         ),
-  //       );
-  //       _generateRoute([]);
-  //     });
-
-  //     // Optionally move the camera to follow the user
-  //     mapController?.animateCamera(
-  //       CameraUpdate.newLatLng(userLocation),
-  //     );
-  //   });
-  // }
 
   Future<void> fetchAndShowCurrentLocation() async {
     setState(() {
@@ -335,8 +555,6 @@ class _MapwithitemsState extends State<Mapwithitems> {
       );
   }
 
-//
-
 //destination info when a marker is clicked
   Widget _buildDestinationDetails() {
     if (_selectedDestination == null) {
@@ -388,80 +606,81 @@ class _MapwithitemsState extends State<Mapwithitems> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned(top: 65, left: 65, child: _showdistanddur()),
-          // Google Map
-          Center(
-            child: Container(
-              padding: EdgeInsets.only(bottom: 120),
-              height: MediaQuery.of(context).size.height * 0.7,
-              width: MediaQuery.of(context).size.width * 0.9,
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: userLocation ?? LatLng(0, 0),
-                  zoom: 12,
+      resizeToAvoidBottomInset: false,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned(top: 65, left: 65, child: _showdistanddur()),
+            // Google Map
+            Center(
+              child: Container(
+                padding: EdgeInsets.only(bottom: 120),
+                height: MediaQuery.of(context).size.height * 0.7,
+                width: MediaQuery.of(context).size.width * 0.9,
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: userLocation ?? LatLng(0, 0),
+                    zoom: 12,
+                  ),
+                  markers: markers,
+                  polylines: showRoute ? polylines : {},
+                  onMapCreated: (GoogleMapController controller) {
+                    mapController = controller;
+                  },
                 ),
-                markers: markers,
-                polylines: showRoute ? polylines : {},
-                onMapCreated: (GoogleMapController controller) {
-                  mapController = controller;
+              ),
+            ),
+            // Back Button
+            Positioned(
+              top: 50,
+              left: 10,
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_circle_left,
+                  size: 50,
+                  color: Color(0xFFA52424),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
                 },
               ),
             ),
-          ),
-          // Back Button
-          Positioned(
-            top: 50,
-            left: 10,
-            child: IconButton(
-              icon: Icon(
-                Icons.arrow_circle_left,
-                size: 50,
-                color: Color(0xFFA52424),
+            // Fetch Location Button
+            Positioned(
+              top: 140,
+              left: 20,
+              child: ElevatedButton(
+                onPressed: () {
+                  _getCurrentLocation();
+                  //_onGenerateRouteClicked();
+                },
+                child: Icon(Icons.my_location, size: 30, color: Colors.red),
               ),
-              onPressed: () {
-                Navigator.pop(context);
-              },
             ),
-          ),
-          // Fetch Location Button
-          Positioned(
-            top: 140,
-            left: 20,
-            child: ElevatedButton(
-              onPressed: () {
-                _getCurrentLocation();
-                //_onGenerateRouteClicked();
-              },
-              child: Icon(Icons.my_location, size: 30, color: Colors.red),
-            ),
-          ),
-          // Draggable Scrollable Sheet
-          DraggableScrollableSheet(
-            initialChildSize: 0.3,
-            minChildSize: 0.2,
-            maxChildSize: 0.5,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 5.0,
-                      spreadRadius: 2.0,
-                    ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  controller: scrollController,
+            // Draggable Scrollable Sheet
+            DraggableScrollableSheet(
+              initialChildSize: 0.3,
+              minChildSize: 0.2,
+              maxChildSize: 0.8,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 5.0,
+                        spreadRadius: 2.0,
+                      ),
+                    ],
+                  ),
                   child: Column(
                     children: [
                       // Drag handle
                       Container(
-                        margin: EdgeInsets.symmetric(vertical: 10),
+                        margin: EdgeInsets.symmetric(vertical: 8),
                         height: 5,
                         width: 50,
                         decoration: BoxDecoration(
@@ -469,88 +688,69 @@ class _MapwithitemsState extends State<Mapwithitems> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      // Content
-                      Column(
-                        children: [
-                          Container(
-                            alignment: Alignment.topLeft,
-                            padding: EdgeInsets.only(left: 40),
-                            child: Text(
-                              'Name your trip',
-                              style: TextStyle(
-                                  fontSize: 25, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          SizedBox(height: 10),
-                          SizedBox(
-                            width: MediaQuery.of(context).size.width * 0.8,
-                            height: 40,
-                            child: TextField(
-                              decoration: InputDecoration(
-                                hintText: 'Name your trip',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 25),
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.4,
-                            child: widget.cartItems.isEmpty
-                                ? Center(child: Text("No items in the cart"))
-                                : ReorderableListView.builder(
-                                    itemCount: widget.cartItems.length,
-                                    onReorder: _reorderItems,
-                                    itemBuilder: (context, index) {
-                                      final item = widget.cartItems[index];
-                                      return Container(
-                                        key: ValueKey(item),
-                                        margin: EdgeInsets.symmetric(
-                                            vertical: 5, horizontal: 10),
-                                        padding: EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          border: Border.all(
-                                              color: Colors.grey, width: 1),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color:
-                                                  Colors.black.withOpacity(0.1),
-                                              blurRadius: 5,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: ListTile(
-                                          title: Text(item['name']),
-                                          subtitle: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(item['address'] ??
-                                                  "No address provided"),
-                                            ],
-                                          ),
-                                          // trailing: IconButton(
-                                          //   icon: Icon(Icons.delete),
-                                          //   onPressed: () =>
-                                          //       _removeFromCart(item),
-                                          // ),
-                                        ),
-                                      );
-                                    },
+                      // Scrollable content
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Name your trip',
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold),
                                   ),
+                                  SizedBox(width: 20),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'How many days:',
+                                        style: TextStyle(fontSize: 15),
+                                      ),
+                                      SizedBox(width: 8),
+                                      _buildDayDropdown(),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 5),
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.7,
+                                height: 40,
+                                child: TextField(
+                                  decoration: InputDecoration(
+                                    hintText: 'Name your trip',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              if (numberOfDays > 0) _buildDayButtons(),
+                              if (selectedDay > 0)
+                                Container(
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.5,
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.8,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.black),
+                                  ),
+                                  child: showDayDetails(selectedDay),
+                                ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              );
-            },
-          ),
-        ],
+                );
+              },
+            )
+          ],
+        ),
       ),
     );
   }
