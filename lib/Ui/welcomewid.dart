@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class Welcomewidgets extends StatefulWidget {
+  const Welcomewidgets({super.key});
+
   @override
-  _getstarted createState() => _getstarted();
+  Getstarted createState() => Getstarted();
 }
 
-class _getstarted extends State<Welcomewidgets> {
+class Getstarted extends State<Welcomewidgets> {
   final PageController _controller = PageController();
   int currentPage = 0; // To track the current page index
 
@@ -123,7 +125,6 @@ class _getstarted extends State<Welcomewidgets> {
                         builder: (context) => NavBar()), //dito login
                   );
                 },
-                child: const Text('Get Started'),
                 style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -132,6 +133,7 @@ class _getstarted extends State<Welcomewidgets> {
                     textStyle: const TextStyle(fontSize: 18),
                     backgroundColor: Color(0xFFA52424),
                     foregroundColor: Colors.white),
+                child: const Text('Get Started'),
               ),
             ),
         ],

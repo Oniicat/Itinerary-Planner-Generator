@@ -4,6 +4,8 @@ import 'package:firestore_basics/Ui/homepage.dart';
 import 'package:firestore_basics/Ui/profile.dart';
 
 class NavBar extends StatefulWidget {
+  const NavBar({super.key});
+
   @override
   State<NavBar> createState() => _NavbarState();
 }
@@ -71,6 +73,8 @@ class _NavbarState extends State<NavBar> {
 }
 
 class MenuScreen extends StatelessWidget {
+  const MenuScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,6 +87,8 @@ class MenuScreen extends StatelessWidget {
 }
 
 class AddScreen extends StatelessWidget {
+  const AddScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,6 +101,8 @@ class AddScreen extends StatelessWidget {
 }
 
 class MessagesScreen extends StatelessWidget {
+  const MessagesScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +116,8 @@ class MessagesScreen extends StatelessWidget {
 }
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

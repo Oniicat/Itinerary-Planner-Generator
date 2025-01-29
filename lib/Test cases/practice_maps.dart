@@ -65,7 +65,6 @@ class _ImthemapState extends State<Imthemap> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     userlocation();
     filtermap(filter);

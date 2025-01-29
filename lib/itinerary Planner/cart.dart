@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firestore_basics/showitinerary.dart';
-import 'package:firestore_basics/setdays.dart';
+import 'package:firestore_basics/itinerary%20Planner/showitinerary.dart';
 
 class CartScreen extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
 
-  CartScreen({required this.cartItems});
+  const CartScreen({required this.cartItems});
 
   @override
   CartScreenState createState() => CartScreenState();

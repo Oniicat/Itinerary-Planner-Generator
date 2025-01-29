@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class CityButtons extends StatefulWidget {
+  const CityButtons({super.key});
+
   @override
   _CityButtonsState createState() => _CityButtonsState();
 }

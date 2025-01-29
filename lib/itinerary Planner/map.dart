@@ -1,9 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:firestore_basics/directions_repository.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_basics/directions_model.dart';
-import 'package:firestore_basics/cart.dart';
+import 'package:firestore_basics/itinerary%20Planner/cart.dart';
 
 class CreateItinerary extends StatefulWidget {
   const CreateItinerary({super.key});
@@ -36,7 +35,9 @@ Future<List<Map<String, dynamic>>> fetchFilteredDestinations(
       };
     }).toList();
   } else {
-    print("No destinations found for type: $type");
+    if (kDebugMode) {
+      print("No destinations found for type: $type");
+    }
     return [];
   }
 }
@@ -51,17 +52,21 @@ Future<List<String>> fetchLocationTypes() async {
     if (snapshot.docs.isNotEmpty) {
       // Use a Set to collect unique types
       Set<String> types = snapshot.docs.map((doc) {
-        var data = doc.data() as Map<String, dynamic>;
+        var data = doc.data();
         return data['type'] as String;
       }).toSet();
 
       return types.toList();
     } else {
-      print("No destinations found!");
+      if (kDebugMode) {
+        print("No destinations found!");
+      }
       return [];
     }
   } catch (e) {
-    print("Error fetching location types: $e");
+    if (kDebugMode) {
+      print("Error fetching location types: $e");
+    }
     return [];
   }
 }
@@ -75,14 +80,14 @@ class _CreateItineraryState extends State<CreateItinerary> {
   // late String long;
   LatLng? userLocation;
   LatLng? pointB;
-  Directions? _info; // route information
+  //Directions? _info; // route information
   Set<Polyline> polylines = {}; //storing routes for multiple destinations
   bool showRoute = false;
   Map<String, dynamic>? _selectedDestination;
-  List<Map<String, dynamic>> _cartItems = [];
+  final List<Map<String, dynamic>> _cartItems = [];
 
   // Search functionality
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -232,7 +237,9 @@ class _CreateItineraryState extends State<CreateItinerary> {
         );
       }
     } catch (e) {
-      print("Error fetching user location: $e");
+      if (kDebugMode) {
+        print("Error fetching user location: $e");
+      }
     }
   }
 
@@ -249,7 +256,9 @@ class _CreateItineraryState extends State<CreateItinerary> {
       // Fetch all destinations initially
       await _fetchDestinations();
     } catch (e) {
-      print('Error initializing screen: $e');
+      if (kDebugMode) {
+        print('Error initializing screen: $e');
+      }
       setState(() {
         _locationTypes = ['All']; // Fallback to default
         _selectedType = 'All';
@@ -309,102 +318,104 @@ class _CreateItineraryState extends State<CreateItinerary> {
         polylines.clear();
       });
     } catch (e) {
-      print('Error fetching destinations: $e'); //for catching an error bai
+      if (kDebugMode) {
+        print('Error fetching destinations: $e');
+      } //for catching an error bai
     }
   }
 
 //clicking the clear route button
-  void _clearRoute() {
-    setState(() {
-      polylines.clear();
-      showRoute = false;
-    });
-  }
+//   void _clearRoute() {
+//     setState(() {
+//       polylines.clear();
+//       showRoute = false;
+//     });
+//   }
 
-// extended funtion for  generate route button (still need to be fixed)
-  void _onGenerateRouteClicked() {
-    List<LatLng> positions = markers.map((marker) => marker.position).toList();
+// // extended funtion for  generate route button (still need to be fixed)
+//   void _onGenerateRouteClicked() {
+//     List<LatLng> positions = markers.map((marker) => marker.position).toList();
 
-    // Ensure the user's location is included as the starting point
-    if (userLocation != null) {
-      positions.insert(0, userLocation!);
-    }
+//     // Ensure the user's location is included as the starting point
+//     if (userLocation != null) {
+//       positions.insert(0, userLocation!);
+//     }
 
-    _generateRoute(positions);
+//     _generateRoute(positions);
 
-    // Set the route visibility to true
-    setState(() {
-      showRoute = true;
-    });
-  }
+//     // Set the route visibility to true
+//     setState(() {
+//       showRoute = true;
+//     });
+//   }
+
+// //for showing the distance and duration
+//   Widget _showdistanddur() {
+//     if (showRoute != true) {
+//       return SizedBox.shrink();
+//     } else
+//       return Container(
+//         padding: const EdgeInsets.symmetric(
+//           vertical: 6.0,
+//           horizontal: 12.0,
+//         ),
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(20.0),
+//           border: Border.all(color: Colors.black, width: 2.0),
+//         ),
+//         child: _info != null
+//             ? Text(
+//                 'Duration: ${_info?.totalDuration}, Distance: ${_info?.totalDistance}',
+//                 style: const TextStyle(fontSize: 18.0, color: Colors.black),
+//               )
+//             : Text(
+//                 'Generating route...',
+//                 style: const TextStyle(fontSize: 18.0, color: Colors.black),
+//               ),
+//       );
+//   }
 
 //for generating the travel route
-  Future<void> _generateRoute(List<LatLng> positions) async {
-    try {
-      showRoute = true;
-      List<LatLng> routePoints = [];
+  // Future<void> _generateRoute(List<LatLng> positions) async {
+  //   try {
+  //     showRoute = true;
+  //     List<LatLng> routePoints = [];
 
-      for (int i = 0; i < positions.length - 1; i++) {
-        final directions = await DirectionsRepository().getDirections(
-          userLocation: positions[i],
-          pointB: positions[i + 1],
-        );
+  //     for (int i = 0; i < positions.length - 1; i++) {
+  //       final directions = await DirectionsRepository().getDirections(
+  //         userLocation: positions[i],
+  //         pointB: positions[i + 1],
+  //       );
 
-        if (directions != null) {
-          // Update route points
-          routePoints.addAll(directions.polylinePoints
-              .map((e) => LatLng(e.latitude, e.longitude))
-              .toList());
+  //       if (directions != null) {
+  //         // Update route points
+  //         routePoints.addAll(directions.polylinePoints
+  //             .map((e) => LatLng(e.latitude, e.longitude))
+  //             .toList());
 
-          // Update the _info variable to hold total distance and duration
-          setState(() {
-            _info = directions;
-          });
-        }
-      }
+  //         // Update the _info variable to hold total distance and duration
+  //         setState(() {
+  //           _info = directions;
+  //         });
+  //       }
+  //     }
 
-      // Update the polyline with the new route
-      setState(() {
-        polylines = {
-          Polyline(
-            polylineId: PolylineId('itinerary_route'),
-            color: Colors.purple,
-            width: 5,
-            points: routePoints,
-          ),
-        };
-      });
-    } catch (e) {
-      print('Error generating route: $e');
-    }
-  }
-
-//for showing the distance and duration
-  Widget _showdistanddur() {
-    if (showRoute != true) {
-      return SizedBox.shrink();
-    } else
-      return Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: 6.0,
-          horizontal: 12.0,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20.0),
-          border: Border.all(color: Colors.black, width: 2.0),
-        ),
-        child: _info != null
-            ? Text(
-                'Duration: ${_info?.totalDuration}, Distance: ${_info?.totalDistance}',
-                style: const TextStyle(fontSize: 18.0, color: Colors.black),
-              )
-            : Text(
-                'Generating route...',
-                style: const TextStyle(fontSize: 18.0, color: Colors.black),
-              ),
-      );
-  }
+  //     // Update the polyline with the new route
+  //     setState(() {
+  //       polylines = {
+  //         Polyline(
+  //           polylineId: PolylineId('itinerary_route'),
+  //           color: Colors.purple,
+  //           width: 5,
+  //           points: routePoints,
+  //         ),
+  //       };
+  //     });
+  //   } catch (e) {
+  //     print('Error generating route: $e');
+  //   }
+  // }
 
 //
   void _onFilterChanged(String? type) {
@@ -636,13 +647,13 @@ class _CreateItineraryState extends State<CreateItinerary> {
 class SearchScreen extends StatefulWidget {
   final String? initialQuery;
 
-  SearchScreen({this.initialQuery});
+  const SearchScreen({super.key, this.initialQuery});
   @override
   _SearchScreenState createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _filteredDestinations = [];
 
   @override
@@ -671,7 +682,7 @@ class _SearchScreenState extends State<SearchScreen> {
     QuerySnapshot querySnapshot = await FirebaseFirestore.instance
         .collection('Destinations')
         .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThan: query + 'z')
+        .where('name', isLessThan: '${query}z')
         .get();
 
     List<Map<String, dynamic>> destinations = [];

@@ -1,9 +1,8 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import 'package:firestore_basics/map_sample.dart';
+import 'package:firestore_basics/Directions/.emv.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:firestore_basics/.emv.dart';
-import 'package:firestore_basics/directions_model.dart';
+
+import 'package:firestore_basics/Directions/directions_model.dart';
 
 // class DirectionsRepository {
 //   static const String _baseURL =

@@ -1,4 +1,4 @@
-import 'package:firestore_basics/map.dart';
+import 'package:firestore_basics/itinerary%20Planner/map.dart';
 import 'package:flutter/material.dart';
 
 class AppFeatures extends StatefulWidget {

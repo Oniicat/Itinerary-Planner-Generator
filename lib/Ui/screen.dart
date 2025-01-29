@@ -1,4 +1,3 @@
-import 'app_features.dart';
 import 'package:flutter/material.dart';
 
 class ScrollableDraggable extends StatefulWidget {

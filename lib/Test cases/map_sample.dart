@@ -1,10 +1,8 @@
-import 'package:firestore_basics/directions_repository.dart';
+import 'package:firestore_basics/Directions/directions_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:firestore_basics/directions_model.dart';
+import 'package:firestore_basics/Directions/directions_model.dart';
 
 class MapWidget extends StatefulWidget {
   const MapWidget({super.key});
@@ -19,8 +17,8 @@ class _MapWidgetState extends State<MapWidget> {
 
   static const LatLng _destination1 =
       LatLng(14.48278480841818, 121.18716191070331);
-  static const LatLng _Jabee = LatLng(14.492796103262384, 121.18167384328976);
-  static const LatLng _Mcdo = LatLng(14.49208236393375, 121.18131129901126);
+  static const LatLng jabee = LatLng(14.492796103262384, 121.18167384328976);
+  static const LatLng mcdo = LatLng(14.49208236393375, 121.18131129901126);
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +36,11 @@ class _MapWidgetState extends State<MapWidget> {
         Marker(
             markerId: MarkerId("Jollibee"),
             icon: BitmapDescriptor.defaultMarker,
-            position: _Jabee),
+            position: jabee),
         Marker(
             markerId: MarkerId("Mcdo"),
             icon: BitmapDescriptor.defaultMarker,
-            position: _Mcdo)
+            position: mcdo)
       },
     ));
   }
@@ -88,7 +86,7 @@ Future<List<String>> fetchLocationTypes() async {
     if (snapshot.docs.isNotEmpty) {
       // Use a Set to collect unique types
       Set<String> types = snapshot.docs.map((doc) {
-        var data = doc.data() as Map<String, dynamic>;
+        var data = doc.data();
         return data['type'] as String;
       }).toSet();
 
@@ -258,29 +256,29 @@ class _MapScreenState extends State<MapScreen> {
   }
 
 //clicking the clear route button
-  void _clearRoute() {
-    setState(() {
-      polylines.clear();
-      showRoute = false;
-    });
-  }
+  // void _clearRoute() {
+  //   setState(() {
+  //     polylines.clear();
+  //     showRoute = false;
+  //   });
+  // }
 
 // extended funtion for  generate route button (still need to be fixed)
-  void _onGenerateRouteClicked() {
-    List<LatLng> positions = markers.map((marker) => marker.position).toList();
+  // void _onGenerateRouteClicked() {
+  //   List<LatLng> positions = markers.map((marker) => marker.position).toList();
 
-    // Ensure the user's location is included as the starting point
-    if (userLocation != null) {
-      positions.insert(0, userLocation!);
-    }
+  //   // Ensure the user's location is included as the starting point
+  //   if (userLocation != null) {
+  //     positions.insert(0, userLocation!);
+  //   }
 
-    _generateRoute(positions);
+  //   _generateRoute(positions);
 
-    // Set the route visibility to true
-    setState(() {
-      showRoute = true;
-    });
-  }
+  //   // Set the route visibility to true
+  //   setState(() {
+  //     showRoute = true;
+  //   });
+  // }
 
 //for generating the travel route
   Future<void> _generateRoute(List<LatLng> positions) async {
@@ -294,17 +292,15 @@ class _MapScreenState extends State<MapScreen> {
           pointB: positions[i + 1],
         );
 
-        if (directions != null) {
-          // Update route points
-          routePoints.addAll(directions.polylinePoints
-              .map((e) => LatLng(e.latitude, e.longitude))
-              .toList());
+        // Update route points
+        routePoints.addAll(directions.polylinePoints
+            .map((e) => LatLng(e.latitude, e.longitude))
+            .toList());
 
-          // Update the _info variable to hold total distance and duration
-          setState(() {
-            _info = directions;
-          });
-        }
+        // Update the _info variable to hold total distance and duration
+        setState(() {
+          _info = directions;
+        });
       }
 
       // Update the polyline with the new route
