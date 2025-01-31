@@ -1,13 +1,180 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_basics/Ui/navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 
-class TripSummary extends StatefulWidget {
+class ItineraryListScreen extends StatefulWidget {
+  const ItineraryListScreen({super.key});
+
+  @override
+  _ItineraryListScreenState createState() => _ItineraryListScreenState();
+}
+
+class _ItineraryListScreenState extends State<ItineraryListScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: Column(
+        children: [
+          Text(
+            'History',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          SizedBox(height: 30),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius
+                              .zero, // This removes the border radius to make it a box shape
+                        ),
+                      ),
+                      child: Text('Itinerary')),
+                  ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius
+                              .zero, // This removes the border radius to make it a box shape
+                        ),
+                      ),
+                      child: Text('Booking'))
+                ],
+              ),
+            ],
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Itineraries')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('No itineraries found.'));
+                }
+
+                final itineraries = snapshot.data!.docs;
+
+                return ListView.builder(
+                  itemCount: itineraries.length,
+                  itemBuilder: (context, index) {
+                    final itinerary = itineraries[index];
+                    final itineraryName =
+                        itinerary['itineraryName'] ?? 'Unnamed Trip';
+                    final numberOfDays = itinerary['numberOfDays'] ?? 0;
+                    final createdAt = itinerary['createdAt'] != null
+                        ? (itinerary['createdAt'] as Timestamp)
+                            .toDate()
+                            .toString()
+                        : 'Unknown Date';
+
+                    return Card(
+                      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              title: Text(
+                                itineraryName,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 20),
+                              ),
+                              subtitle: Text(
+                                DateFormat('MMMM d, y')
+                                    .format(DateTime.parse(createdAt)),
+                              ),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => TripDetails(
+                                      itineraryName: itineraryName,
+                                      numberOfDays: numberOfDays,
+                                      dailyDestinations:
+                                          _mapFirestoreData(itinerary['days']),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: ElevatedButton(
+                                style: ButtonStyle(
+                                  backgroundColor: WidgetStateProperty.all(
+                                      Color(0xFFA52424)),
+                                  foregroundColor:
+                                      WidgetStateProperty.all(Colors.white),
+                                ),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      content: Text(
+                                          'Teka lang boss wala pa akong function'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text('Oumki'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'Done',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Map<int, List<Map<String, dynamic>>> _mapFirestoreData(
+    Map<dynamic, dynamic>? firestoreData) {
+  if (firestoreData == null) return {};
+
+  return firestoreData.map<int, List<Map<String, dynamic>>>(
+    (key, value) {
+      List<Map<String, dynamic>> destinations =
+          List<Map<String, dynamic>>.from(value);
+      return MapEntry(int.parse(key), destinations);
+    },
+  );
+}
+
+class TripDetails extends StatefulWidget {
   final String itineraryName;
   final int numberOfDays;
   final Map<int, List<Map<String, dynamic>>> dailyDestinations;
-  const TripSummary({
+  const TripDetails({
     super.key,
     required this.itineraryName,
     required this.numberOfDays,
@@ -15,15 +182,16 @@ class TripSummary extends StatefulWidget {
   });
 
   @override
-  State<TripSummary> createState() => _TripSummaryState();
+  State<TripDetails> createState() => _TripDetailsState();
 }
 
-class _TripSummaryState extends State<TripSummary> {
-  Set<Marker> markers = {};
+class _TripDetailsState extends State<TripDetails> {
   int numberOfDays = 0; // Total days
   int selectedDay = 0;
   Map<int, List<Map<String, dynamic>>> dailyDestinations = {};
   String itineraryName = '';
+  Set<Marker> markers = {};
+
   Widget showDayDetails(int day) {
     List<Map<String, dynamic>> destinations = dailyDestinations[day]!;
 
@@ -140,54 +308,6 @@ class _TripSummaryState extends State<TripSummary> {
     });
   }
 
-  //save itinerary trip
-  Future<void> saveItinerary() async {
-    final itineraryData = {
-      'itineraryName': itineraryName,
-      'travelerName': 'Baymax',
-      'numberOfDays': numberOfDays,
-      'createdAt': FieldValue.serverTimestamp(),
-      'days': Map.fromIterable(
-        List.generate(numberOfDays, (index) => index + 1),
-        key: (day) => day.toString(),
-        value: (day) {
-          return dailyDestinations[day]!.map((destination) {
-            return {
-              'name': destination['name'],
-              'latitude': destination['latitude'],
-              'longitude': destination['longitude'],
-              'address': destination['address'],
-            };
-          }).toList();
-        },
-      ),
-    };
-
-    try {
-      final itineraryRef =
-          FirebaseFirestore.instance.collection('Itineraries').doc();
-      await itineraryRef.set(itineraryData);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          content: Text('Itinerary saved successfully!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                MaterialPageRoute(builder: (context) => NavBar());
-                Navigator.pop(context);
-              },
-              child: Text('Ok'),
-            ),
-          ],
-        ),
-      );
-      print('Itinerary saved successfully!');
-    } catch (e) {
-      print('Error saving itinerary: $e');
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -197,7 +317,6 @@ class _TripSummaryState extends State<TripSummary> {
     itineraryName = widget.itineraryName;
   }
 
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
         body: SafeArea(
@@ -243,7 +362,7 @@ class _TripSummaryState extends State<TripSummary> {
                               fontSize: 18, fontWeight: FontWeight.bold)),
                       SizedBox(width: 25),
                       Text(
-                        'Trip trip lang',
+                        'Triptrip lang',
                         style: TextStyle(fontSize: 18),
                       ),
                     ],
@@ -289,41 +408,37 @@ class _TripSummaryState extends State<TripSummary> {
                         ),
                     ],
                   ),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all(Color(0xFFA52424)),
+                      foregroundColor: WidgetStateProperty.all(Colors.white),
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          content:
+                              Text('Teka lang boss wala pa akong function'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: Text('Oumki'),
+                            ),
+                          ],
+                        ),
+                      );
+                      // Call the save itinerary function when the button is pressed
+                    },
+                    child: Text('View'),
+                  ),
                 ],
               ),
             ),
             SizedBox(height: 40),
-            ElevatedButton(
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(Color(0xFFA52424)),
-                foregroundColor: WidgetStateProperty.all(Colors.white),
-              ),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    content: Text('Save Itinerary Trip?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          saveItinerary();
-                        },
-                        child: Text('Yes'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text('No'),
-                      ),
-                    ],
-                  ),
-                );
-                // Call the save itinerary function when the button is pressed
-              },
-              child: Text('Save Itinerary'),
-            ),
           ],
         ),
       ),

@@ -1,5 +1,7 @@
+import 'package:firestore_basics/itinerary%20Planner/itinerary%20trip%20list.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:firestore_basics/itinerary%20Planner/itinerary%20trip%20list.dart';
 
 class CarouselSlide extends StatefulWidget {
   @override
@@ -162,7 +164,13 @@ class _LandingpageState extends State<Landingpage> {
                   children: [
                     IconButton(
                       icon: Icon(Icons.history),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => ItineraryListScreen()),
+                        );
+                      },
                       iconSize: 30.0,
                       color: Color(0xFFA52424),
                     ),

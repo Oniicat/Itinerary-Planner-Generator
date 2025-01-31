@@ -25,7 +25,8 @@ class _MapwithitemsState extends State<Mapwithitems> {
   Directions? _info; // Route information
   Set<Polyline> polylines = {}; // Polylines for the route
   bool showRoute = false; // Toggle to show/hide route
-
+  final TextEditingController itineraryNameController =
+      TextEditingController(); // for naming the itinerary
   bool isLoading = false; // for triggering user location fetch
   LocationData? currentLocation; // Current user location
 
@@ -83,7 +84,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
 
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(15),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -91,13 +92,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
               'Destinations for Day $day',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            if (destinations.isEmpty)
-              Center(
-                child: Text(
-                  'No destinations added yet.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ),
+            SizedBox(height: 30),
             ReorderableListView(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -136,89 +131,105 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 );
               }),
             ),
-            SizedBox(height: 16),
-            Center(
-              child: ElevatedButton(
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(Color(0xFFA52424)),
-                ),
-                onPressed: () async {
-                  List<Map<String, dynamic>> cartItems = _fetchCartItems()
-                      .where((cartItem) => !isDestinationAlreadyAdded(cartItem))
-                      .toList();
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (destinations.isEmpty)
+                  Center(
+                    child: Text(
+                      'No destinations added yet.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ),
+                SizedBox(height: 50),
+                Center(
+                  child: ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all(Color(0xFFA52424)),
+                    ),
+                    onPressed: () async {
+                      List<Map<String, dynamic>> cartItems = _fetchCartItems()
+                          .where((cartItem) =>
+                              !isDestinationAlreadyAdded(cartItem))
+                          .toList();
 
-                  if (cartItems.isEmpty) {
-                    showDialog(
-                      context: context,
-                      builder: (context) {
-                        return AlertDialog(
-                          content: Text('No more destinations to add.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: Text('OK'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                    return;
-                  }
-
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text('Select Destination from Cart'),
-                        content: Container(
-                          width: double.maxFinite,
-                          child: ListView.builder(
-                            itemCount: cartItems.length,
-                            itemBuilder: (context, index) {
-                              final item = cartItems[index];
-                              return ListTile(
-                                title: Text(item['name']),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(item['address'] ??
-                                        "No address provided"),
-                                  ],
-                                ),
-                                trailing: IconButton(
-                                  icon: Icon(Icons.add),
+                      if (cartItems.isEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              content: Text('No more destinations to add.'),
+                              actions: [
+                                TextButton(
                                   onPressed: () {
-                                    setState(() {
-                                      destinations.add(item);
-                                      dailyDestinations[day] = destinations;
-                                    });
-
                                     Navigator.pop(context);
                                   },
+                                  child: Text('OK'),
                                 ),
-                              );
-                            },
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text('Close'),
-                          ),
-                        ],
+                              ],
+                            );
+                          },
+                        );
+                        return;
+                      }
+
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Select Destination from Cart'),
+                            content: Container(
+                              width: double.maxFinite,
+                              child: ListView.builder(
+                                itemCount: cartItems.length,
+                                itemBuilder: (context, index) {
+                                  final item = cartItems[index];
+                                  return ListTile(
+                                    title: Text(item['name']),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item['address'] ??
+                                            "No address provided"),
+                                      ],
+                                    ),
+                                    trailing: IconButton(
+                                      icon: Icon(Icons.add),
+                                      onPressed: () {
+                                        setState(() {
+                                          destinations.add(item);
+                                          dailyDestinations[day] = destinations;
+                                        });
+
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text('Close'),
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
-                  );
-                },
-                child: Text(
-                  'Add Destination from Cart',
-                  style: TextStyle(color: Colors.white),
+                    child: Text(
+                      'Add Destination from Cart',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -252,6 +263,12 @@ class _MapwithitemsState extends State<Mapwithitems> {
         ));
       }
 
+      markers.add(Marker(
+        markerId: MarkerId('user_location'),
+        position: userLocation!,
+        infoWindow: InfoWindow(title: 'This is you nigga'),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      ));
       _generateRoute(destinations
           .map((d) => LatLng(d['latitude'], d['longitude']))
           .toList());
@@ -295,8 +312,8 @@ class _MapwithitemsState extends State<Mapwithitems> {
   @override
   void initState() {
     super.initState();
-    //_initializemap();
-    //_getUserLocation();
+    // _initializemap();
+    _getUserLocation();
     //_getcurrentLocation();
     // _generateRoute([]);
     //_onGenerateRouteClicked();
@@ -483,6 +500,39 @@ class _MapwithitemsState extends State<Mapwithitems> {
     }
   }
 
+  Future<void> _getUserLocation() async {
+    //Position position = await getCurrentPosition();
+    try {
+      // Fetch current location (for demonstration purposes)
+      setState(() {
+        //Position position = await getCurrentPosition();
+        userLocation = //LatLng(position.latitude, position.longitude);
+            LatLng(
+                14.499111632246139, 121.18714131749572); // Example coordinates
+
+        // Add marker for user's location
+        markers.add(
+          Marker(
+            markerId: MarkerId("user_location"),
+            position: userLocation!,
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueBlue), // Custom marker color
+          ),
+        );
+      });
+
+      // Move the camera to the user's location (ensure it's not null)
+      if (mapController != null && userLocation != null) {
+        mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(userLocation!, 14), // Adjust zoom level
+        );
+      }
+    } catch (e) {
+      print("Error fetching user location: $e");
+    }
+  }
+
 //saving to firestore
   Future<void> saveItinerary() async {
     final itineraryData = {
@@ -565,6 +615,27 @@ class _MapwithitemsState extends State<Mapwithitems> {
                   padding: EdgeInsets.only(right: 20),
                   child: ElevatedButton(
                       onPressed: () {
+                        String itineraryName = itineraryNameController.text;
+                        if (itineraryName.isEmpty) {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                content: Text(
+                                    'Tol pangalanan mo naman muna yung trip mo'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text('OK'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          return;
+                        }
                         // Navigator.pop(context);
                         showDialog(
                           context: context,
@@ -585,7 +656,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => TripSummary(
-                                        itineraryName: 'Sample Trip',
+                                        itineraryName: itineraryName,
                                         numberOfDays: numberOfDays,
                                         dailyDestinations: dailyDestinations,
                                       ),
@@ -685,6 +756,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                                 width: MediaQuery.of(context).size.width * 0.7,
                                 height: 40,
                                 child: TextField(
+                                  controller: itineraryNameController,
                                   decoration: InputDecoration(
                                     hintText: 'Name your trip',
                                     border: OutlineInputBorder(),
