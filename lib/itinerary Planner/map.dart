@@ -1,3 +1,4 @@
+import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -470,8 +471,10 @@ class _CreateItineraryState extends State<CreateItinerary> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          PreferredSize(preferredSize: Size.fromHeight(35), child: AppBar()),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: BackButtonRed(),
+      ),
       body: Column(
         children: [
           Positioned(

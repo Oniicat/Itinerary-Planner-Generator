@@ -1,4 +1,5 @@
 import 'package:firestore_basics/itinerary%20Planner/map.dart';
+import 'package:firestore_basics/itinerary%20generator/select_municipality_and_kind_of_trip.dart';
 import 'package:flutter/material.dart';
 
 class AppFeatures extends StatefulWidget {
@@ -104,7 +105,14 @@ class _AppFeaturesState extends State<AppFeatures> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                SelectMunicipality()),
+                                      );
+                                    },
                                     child: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,

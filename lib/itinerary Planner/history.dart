@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firestore_basics/Ui/back_button_red.dart';
+import 'package:firestore_basics/itinerary%20Planner/view_trip.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 
 class ItineraryListScreen extends StatefulWidget {
-  const ItineraryListScreen({super.key});
+  const ItineraryListScreen({super.key // Initialize this
+      });
 
   @override
   _ItineraryListScreenState createState() => _ItineraryListScreenState();
@@ -14,7 +17,14 @@ class _ItineraryListScreenState extends State<ItineraryListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        scrolledUnderElevation: 0,
+        elevation: 0, // Removes shadow by default
+        // backgroundColor: Colors.transparent, // Transparent background
+        // elevation: 0, // Removes shadow
+        automaticallyImplyLeading: false,
+        leading: BackButtonRed(),
+      ),
       body: Column(
         children: [
           Text(
@@ -26,34 +36,36 @@ class _ItineraryListScreenState extends State<ItineraryListScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius
-                              .zero, // This removes the border radius to make it a box shape
-                        ),
-                      ),
-                      child: Text('Itinerary')),
-                  ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius
-                              .zero, // This removes the border radius to make it a box shape
-                        ),
-                      ),
-                      child: Text('Booking'))
-                ],
-              ),
+              // Row(
+              //   children: [
+              //     ElevatedButton(
+              //         onPressed: () {},
+              //         style: ElevatedButton.styleFrom(
+              //           shape: RoundedRectangleBorder(
+              //             borderRadius: BorderRadius
+              //                 .zero, // This removes the border radius to make it a box shape
+              //           ),
+              //         ),
+              //         child: Text('Itinerary')),
+              //     ElevatedButton(
+              //         onPressed: () {},
+              //         style: ElevatedButton.styleFrom(
+              //           shape: RoundedRectangleBorder(
+              //             borderRadius: BorderRadius
+              //                 .zero, // This removes the border radius to make it a box shape
+              //           ),
+              //         ),
+              //         child: Text('Booking'))
+              //   ],
+              // ),
             ],
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('Itineraries')
+                  .orderBy('createdAt',
+                      descending: true) // Sort from newest to oldest
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -97,11 +109,14 @@ class _ItineraryListScreenState extends State<ItineraryListScreen> {
                                     .format(DateTime.parse(createdAt)),
                               ),
                               onTap: () {
+                                String selectedDay =
+                                    "Day ${index + 1}"; // Example selected day logic
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => TripDetails(
                                       itineraryName: itineraryName,
+                                      selectedDay: selectedDay,
                                       numberOfDays: numberOfDays,
                                       dailyDestinations:
                                           _mapFirestoreData(itinerary['days']),
@@ -174,11 +189,14 @@ class TripDetails extends StatefulWidget {
   final String itineraryName;
   final int numberOfDays;
   final Map<int, List<Map<String, dynamic>>> dailyDestinations;
+  final String selectedDay; // Add selectedDay
+
   const TripDetails({
     super.key,
     required this.itineraryName,
     required this.numberOfDays,
     required this.dailyDestinations,
+    required this.selectedDay,
   });
 
   @override
@@ -416,22 +434,26 @@ class _TripDetailsState extends State<TripDetails> {
                       foregroundColor: WidgetStateProperty.all(Colors.white),
                     ),
                     onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          content:
-                              Text('Teka lang boss wala pa akong function'),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: Text('Oumki'),
+                      if (dailyDestinations[selectedDay] != null) {
+                        _updateMapForSelectedDay(); // Ensure markers are set
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ViewTrip(
+                              itineraryName: itineraryName,
+                              selectedDayDestinations:
+                                  dailyDestinations[selectedDay]!,
+                              markers: markers,
                             ),
-                          ],
-                        ),
-                      );
-                      // Call the save itinerary function when the button is pressed
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  'No destinations for the selected day!')),
+                        );
+                      }
                     },
                     child: Text('View'),
                   ),

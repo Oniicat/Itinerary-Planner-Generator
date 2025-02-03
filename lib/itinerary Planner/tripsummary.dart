@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/Ui/navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -174,8 +175,12 @@ class _TripSummaryState extends State<TripSummary> {
           actions: [
             TextButton(
               onPressed: () {
-                MaterialPageRoute(builder: (context) => NavBar());
-                Navigator.pop(context);
+                Navigator.pop(context); // Close the dialog
+                Navigator.pushReplacement(
+                  // Ensure correct navigation
+                  context,
+                  MaterialPageRoute(builder: (context) => NavBar()),
+                );
               },
               child: Text('Ok'),
             ),
@@ -201,131 +206,125 @@ class _TripSummaryState extends State<TripSummary> {
   Widget build(BuildContext context) {
     return Scaffold(
         body: SafeArea(
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              alignment: Alignment.topLeft,
-              child: IconButton(
-                icon: Icon(
-                  Icons.arrow_circle_left,
-                  size: 50,
-                  color: Color(0xFFA52424),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BackButtonRed(),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  'Trip Summary',
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-            Text(
-              'Trip Summary',
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 25),
-            Container(
-              height: MediaQuery.of(context).size.height * 0.6,
-              width: MediaQuery.of(context).size.width * 0.9,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.all(Radius.circular(10)),
-              ),
-              child: Column(
-                children: [
-                  Text(itineraryName,
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-                  Row(
+                SizedBox(height: 25),
+                Container(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  width: MediaQuery.of(context).size.width * 0.9,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                  child: Column(
                     children: [
-                      SizedBox(width: 25),
-                      Text('Kind of Trip:',
+                      Text(itineraryName,
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 25),
-                      Text(
-                        'Trip trip lang',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      SizedBox(width: 25),
-                      Text('No. of Days:',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 25),
-                      Text(
-                        ' $numberOfDays ',
-                        style: TextStyle(
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      if (numberOfDays > 0) _buildDayButtons(),
-                      SizedBox(height: 20),
-                      if (selectedDay > 0)
-                        Container(
-                          height: MediaQuery.of(context).size.height * 0.3,
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            border: Border.all(color: Colors.grey),
+                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          SizedBox(width: 25),
+                          Text('Kind of Trip:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          SizedBox(width: 25),
+                          Text(
+                            'Trip trip lang',
+                            style: TextStyle(fontSize: 18),
                           ),
-                          child: showDayDetails(selectedDay),
-                        ),
-                      if (selectedDay == 0)
-                        Container(
-                          height: MediaQuery.of(context).size.height * 0.3,
-                          width: MediaQuery.of(context).size.width * 0.75,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          SizedBox(width: 25),
+                          Text('No. of Days:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          SizedBox(width: 25),
+                          Text(
+                            ' $numberOfDays ',
+                            style: TextStyle(
+                              fontSize: 18,
+                            ),
                           ),
-                          child: Center(
-                              child: Text('Select a day to view details')),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 40),
-            ElevatedButton(
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(Color(0xFFA52424)),
-                foregroundColor: WidgetStateProperty.all(Colors.white),
-              ),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    content: Text('Save Itinerary Trip?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          saveItinerary();
-                        },
-                        child: Text('Yes'),
+                        ],
                       ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text('No'),
+                      Column(
+                        children: [
+                          if (numberOfDays > 0) _buildDayButtons(),
+                          SizedBox(height: 20),
+                          if (selectedDay > 0)
+                            Container(
+                              height: MediaQuery.of(context).size.height * 0.3,
+                              width: MediaQuery.of(context).size.width * 0.8,
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10)),
+                                border: Border.all(color: Colors.grey),
+                              ),
+                              child: showDayDetails(selectedDay),
+                            ),
+                          if (selectedDay == 0)
+                            Container(
+                              height: MediaQuery.of(context).size.height * 0.3,
+                              width: MediaQuery.of(context).size.width * 0.75,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.black),
+                              ),
+                              child: Center(
+                                  child: Text('Select a day to view details')),
+                            ),
+                        ],
                       ),
                     ],
                   ),
-                );
-                // Call the save itinerary function when the button is pressed
-              },
-              child: Text('Save Itinerary'),
+                ),
+                SizedBox(height: 40),
+                ElevatedButton(
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStateProperty.all(Color(0xFFA52424)),
+                    foregroundColor: WidgetStateProperty.all(Colors.white),
+                  ),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        content: Text('Save Itinerary Trip?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              saveItinerary();
+                            },
+                            child: Text('Yes'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text('No'),
+                          ),
+                        ],
+                      ),
+                    );
+                    // Call the save itinerary function when the button is pressed
+                  },
+                  child: Text('Save Itinerary'),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ));
   }

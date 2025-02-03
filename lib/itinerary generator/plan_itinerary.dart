@@ -1,46 +1,71 @@
+import 'package:firestore_basics/Directions/directions_model.dart';
 import 'package:firestore_basics/Directions/directions_repository.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/itinerary%20Planner/tripsummary.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:firestore_basics/Directions/directions_model.dart';
 import 'package:location/location.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 
-class Mapwithitems extends StatefulWidget {
-  final List<Map<String, dynamic>> cartItems; // Accept destinations here
+class PlanItinerary extends StatefulWidget {
+  final List<Map<String, dynamic>> cartItems;
+  final int numberOfDays;
+  const PlanItinerary(
+      {super.key, required this.cartItems, required this.numberOfDays});
 
-  // Constructor to receive destinations
-  const Mapwithitems({super.key, required this.cartItems});
   @override
-  _MapwithitemsState createState() => _MapwithitemsState();
+  State<PlanItinerary> createState() => _PlanItineraryState();
 }
 
-class _MapwithitemsState extends State<Mapwithitems> {
-  //variable for map and destinations
+class _PlanItineraryState extends State<PlanItinerary> {
   GoogleMapController? mapController;
-  Set<Marker> markers = {}; // Markers for destinations
-  LatLng? userLocation; // User's location
+  Set<Marker> markers = {};
+  Map<String, dynamic>? _selectedDestination;
+  LatLng? userLocation =
+      LatLng(14.499111632246139, 121.18714131749572); //dummy muna
+  List<Map<String, dynamic>> cartItems = [];
+  int selectedDay = 0;
+  int numberOfDays = 0;
+  int days = 0;
+  bool showRoute = false;
   Directions? _info; // Route information
   Set<Polyline> polylines = {}; // Polylines for the route
-  bool showRoute = false; // Toggle to show/hide route
   final TextEditingController itineraryNameController =
       TextEditingController(); // for naming the itinerary
-  bool isLoading = false; // for triggering user location fetch
+
   LocationData? currentLocation; // Current user location
 
-  //Allocation of destinations to days
-  List<Map<String, dynamic>> cartItems = []; // Main cart items
-  Map<int, List<Map<String, dynamic>>> dailyDestinations =
-      {}; // Destinations grouped by day
+  Map<int, List<Map<String, dynamic>>> dailyDestinations = {};
 
-  int numberOfDays = 0; // Total days
+  //for showing the distance and duration
+  Widget _showdistanddur() {
+    List<LatLng> positions = markers.map((marker) => marker.position).toList();
+    if (positions.length < 2) {
+      return SizedBox.shrink();
+    } else {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: 6.0,
+          horizontal: 12.0,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(color: Colors.black, width: 2.0),
+        ),
+        child: _info != null
+            ? Text(
+                'Duration: ${_info?.totalDuration}, Distance: ${_info?.totalDistance}',
+                style: const TextStyle(fontSize: 18.0, color: Colors.black),
+              )
+            : Text(
+                'Generating route...',
+                style: const TextStyle(fontSize: 18.0, color: Colors.black),
+              ),
+      );
+    }
+  }
 
-  int selectedDay = 0; // Currently selected day
-
-//builder for the buttons of days
   Widget _buildDayDropdown() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -69,6 +94,87 @@ class _MapwithitemsState extends State<Mapwithitems> {
     );
   }
 
+  void dailydestinationlist() {
+    setState(() {
+      numberOfDays = widget.numberOfDays; // Update the number of days
+      dailyDestinations.clear(); // Clear and reset destinations
+      for (int i = 1; i <= numberOfDays; i++) {
+        dailyDestinations[i] = [];
+      }
+    });
+  }
+
+  //arrangement of buttons of days
+  Widget _buildDayButtons() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(numberOfDays, (index) {
+          int day = index + 1;
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all(
+                  selectedDay == day ? Color(0xFFA52424) : Colors.white,
+                ),
+                foregroundColor: WidgetStateProperty.all(
+                  selectedDay == day ? Colors.white : Color(0xFFA52424),
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  selectedDay = day;
+                });
+                showDayDetails(day);
+                _updateMapForSelectedDay();
+              },
+              child: Text('Day $day'),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  void _updateMapForSelectedDay() {
+    setState(() {
+      markers.clear();
+      polylines.clear();
+
+      List<Map<String, dynamic>> destinations =
+          dailyDestinations[selectedDay] ?? [];
+
+      for (var destination in destinations) {
+        LatLng position =
+            LatLng(destination['latitude'], destination['longitude']);
+        markers.add(Marker(
+          markerId: MarkerId(
+              'marker_${destination['latitude']}_${destination['longitude']}'),
+          position: position,
+          infoWindow: InfoWindow(title: destination['name']),
+        ));
+      }
+
+      markers.add(Marker(
+        markerId: MarkerId('user_location'),
+        position: userLocation!,
+        infoWindow: InfoWindow(title: 'This is you nigga'),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      ));
+      _generateRoute(destinations
+          .map((d) => LatLng(d['latitude'], d['longitude']))
+          .toList());
+    });
+  }
+
+  // function for transfering the items from the cart
+  List<Map<String, dynamic>> _fetchCartItems() {
+    // Replace this with your actual logic to fetch cart items
+    return widget.cartItems;
+  }
+
   // extension function to check if a destination is already in any day
   bool isDestinationAlreadyAdded(Map<String, dynamic> destination) {
     for (var dayDestinations in dailyDestinations.values) {
@@ -79,7 +185,6 @@ class _MapwithitemsState extends State<Mapwithitems> {
     return false;
   }
 
-//function for showing the details of the day
   Widget showDayDetails(int day) {
     List<Map<String, dynamic>> destinations = dailyDestinations[day]!;
 
@@ -238,110 +343,6 @@ class _MapwithitemsState extends State<Mapwithitems> {
     );
   }
 
-// function for transfering the items from the cart
-  List<Map<String, dynamic>> _fetchCartItems() {
-    // Replace this with your actual logic to fetch cart items
-    return widget.cartItems;
-  }
-
-//not used yet
-  void _updateMapForSelectedDay() {
-    setState(() {
-      markers.clear();
-      polylines.clear();
-
-      List<Map<String, dynamic>> destinations =
-          dailyDestinations[selectedDay] ?? [];
-
-      for (var destination in destinations) {
-        LatLng position =
-            LatLng(destination['latitude'], destination['longitude']);
-        markers.add(Marker(
-          markerId: MarkerId(
-              'marker_${destination['latitude']}_${destination['longitude']}'),
-          position: position,
-          infoWindow: InfoWindow(title: destination['name']),
-        ));
-      }
-
-      markers.add(Marker(
-        markerId: MarkerId('user_location'),
-        position: userLocation!,
-        infoWindow: InfoWindow(title: 'This is you nigga'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-      ));
-      _generateRoute(destinations
-          .map((d) => LatLng(d['latitude'], d['longitude']))
-          .toList());
-    });
-  }
-
-//arrangement of buttons of days
-  Widget _buildDayButtons() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(numberOfDays, (index) {
-          int day = index + 1;
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(
-                  selectedDay == day ? Color(0xFFA52424) : Colors.white,
-                ),
-                foregroundColor: WidgetStateProperty.all(
-                  selectedDay == day ? Colors.white : Color(0xFFA52424),
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  selectedDay = day;
-                });
-                showDayDetails(day);
-                _updateMapForSelectedDay();
-              },
-              child: Text('Day $day'),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // _initializemap();
-    _getUserLocation();
-    //_getcurrentLocation();
-    // _generateRoute([]);
-    //_onGenerateRouteClicked();
-  }
-
-//permission for accessing gps
-  Future<Position> getCurrentPosition() async {
-    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!isServiceEnabled) {
-      throw Exception("Location services are disabled. Please enable them.");
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception("Location permissions are denied.");
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception("Location permissions are permanently denied.");
-    }
-
-    return await Geolocator.getCurrentPosition();
-  }
-
   void _getCurrentLocation() {
     Location location = Location();
 
@@ -395,45 +396,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
     });
   }
 
-  Future<void> fetchAndShowCurrentLocation() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      Position position = await getCurrentPosition();
-      LatLng userLocation = LatLng(position.latitude, position.longitude);
-
-      // Update markers and move camera
-      setState(() {
-        markers.add(
-          Marker(
-            markerId: MarkerId("MyLocation"),
-            position: userLocation,
-            infoWindow: InfoWindow(title: "Your Location"),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueOrange),
-          ),
-        );
-        _generateRoute([]);
-      });
-
-      mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(userLocation, 15),
-      );
-    } catch (e) {
-      // Show error as a snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-//for generating the travel route
+  //for generating the travel route
   Future<void> _generateRoute(List<LatLng> positions) async {
     showRoute = true;
     List<LatLng> positions = markers.map((marker) => marker.position).toList();
@@ -472,99 +435,11 @@ class _MapwithitemsState extends State<Mapwithitems> {
     });
   }
 
-//for showing the distance and duration
-  Widget _showdistanddur() {
-    List<LatLng> positions = markers.map((marker) => marker.position).toList();
-    if (positions.length < 2) {
-      return SizedBox.shrink();
-    } else {
-      return Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: 6.0,
-          horizontal: 12.0,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20.0),
-          border: Border.all(color: Colors.black, width: 2.0),
-        ),
-        child: _info != null
-            ? Text(
-                'Duration: ${_info?.totalDuration}, Distance: ${_info?.totalDistance}',
-                style: const TextStyle(fontSize: 18.0, color: Colors.black),
-              )
-            : Text(
-                'Generating route...',
-                style: const TextStyle(fontSize: 18.0, color: Colors.black),
-              ),
-      );
-    }
-  }
-
-  Future<void> _getUserLocation() async {
-    //Position position = await getCurrentPosition();
-    try {
-      // Fetch current location (for demonstration purposes)
-      setState(() {
-        //Position position = await getCurrentPosition();
-        userLocation = //LatLng(position.latitude, position.longitude);
-            LatLng(
-                14.499111632246139, 121.18714131749572); // Example coordinates
-
-        // Add marker for user's location
-        // markers.add(
-        //   Marker(
-        //     markerId: MarkerId("user_location"),
-        //     position: userLocation!,
-        //     infoWindow: InfoWindow(title: "Your Location"),
-        //     icon: BitmapDescriptor.defaultMarkerWithHue(
-        //         BitmapDescriptor.hueBlue), // Custom marker color
-        //   ),
-        // );
-      });
-
-      // Move the camera to the user's location (ensure it's not null)
-      if (mapController != null && userLocation != null) {
-        mapController!.animateCamera(
-          CameraUpdate.newLatLngZoom(userLocation!, 14), // Adjust zoom level
-        );
-      }
-    } catch (e) {
-      print("Error fetching user location: $e");
-    }
-  }
-
-//saving to firestore
-  Future<void> saveItinerary() async {
-    final itineraryData = {
-      'itineraryName': 'Sample Itinerary',
-      'travelerName': 'John Doe',
-      'numberOfDays': numberOfDays,
-      'createdAt': FieldValue.serverTimestamp(),
-      'days': Map.fromIterable(
-        List.generate(numberOfDays, (index) => index + 1),
-        key: (day) => day.toString(),
-        value: (day) {
-          return dailyDestinations[day]!.map((destination) {
-            return {
-              'name': destination['name'],
-              'latitude': destination['latitude'],
-              'longitude': destination['longitude'],
-              'address': destination['address'],
-            };
-          }).toList();
-        },
-      ),
-    };
-
-    try {
-      final itineraryRef =
-          FirebaseFirestore.instance.collection('Itineraries').doc();
-      await itineraryRef.set(itineraryData);
-      print('Itinerary saved successfully!');
-    } catch (e) {
-      print('Error saving itinerary: $e');
-    }
+  @override
+  void initState() {
+    //numberOfDays = widget.numberOfDays;
+    cartItems = widget.cartItems;
+    dailydestinationlist();
   }
 
   @override
@@ -719,28 +594,21 @@ class _MapwithitemsState extends State<Mapwithitems> {
                           controller: scrollController,
                           child: Column(
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Name your trip',
-                                    style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  SizedBox(width: 20),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'How many days:',
-                                        style: TextStyle(fontSize: 15),
-                                      ),
-                                      SizedBox(width: 8),
-                                      _buildDayDropdown(),
-                                    ],
-                                  ),
-                                ],
+                              Padding(
+                                padding: const EdgeInsets.only(right: 152),
+                                child: Text(
+                                  'Name your trip',
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold),
+                                ),
                               ),
+                              ElevatedButton(
+                                  onPressed: () {
+                                    print('ilang araw $numberOfDays');
+                                    print('cart items $cartItems');
+                                  },
+                                  child: Text('testing')),
                               SizedBox(height: 5),
                               SizedBox(
                                 width: MediaQuery.of(context).size.width * 0.7,
@@ -781,137 +649,3 @@ class _MapwithitemsState extends State<Mapwithitems> {
     );
   }
 }
-
-
-
-//////////////////////////////////unused codes///////////////////////////////////
-//destination info when a marker is clicked
-  // Widget _buildDestinationDetails() {
-  //   if (_selectedDestination == null) {
-  //     return Center(child: Text('Tap on a destination to see details'));
-  //   }
-
-  //   return Padding(
-  //     padding: const EdgeInsets.all(16.0),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Text(
-  //           _selectedDestination!['name'] ?? '',
-  //           style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-  //         ),
-  //         SizedBox(height: 5),
-  //         Text(
-  //           "Address: ${_selectedDestination!['address'] ?? ''}",
-  //           style: TextStyle(fontSize: 13),
-  //         ),
-  //         SizedBox(height: 5),
-  //         Text(
-  //           "Description: ${_selectedDestination!['description'] ?? ''}",
-  //           style: TextStyle(fontSize: 13),
-  //         ),
-  //         SizedBox(height: 5),
-  //         Text(
-  //           "Contact: ${_selectedDestination!['contact'] ?? ''}",
-  //           style: TextStyle(fontSize: 13),
-  //         ),
-  //         // ElevatedButton(onPressed:() {
-  //         //   removeMarker(position);
-  //         // }, child: Text('Remove Destination')),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-//reorder items/destinations in cart
-  // void _reorderItems(int oldIndex, int newIndex) {
-  //   setState(() {
-  //     if (newIndex > oldIndex) {
-  //       newIndex -= 1;
-  //     }
-  //     final item = widget.cartItems.removeAt(oldIndex);
-  //     widget.cartItems.insert(newIndex, item);
-  //   });
-  // }
-
-  // Future<void> _initializemap() async {
-  //   try {
-  //     // Directly use the destinations passed into the MapScreen
-  //     setState(() {
-  //       markers.clear(); // Clear any pre-existing markers
-  //       showRoute = true;
-  //       List<LatLng> destinationPositions = [];
-  //       for (var destination in widget.cartItems) {
-  //         final position =
-  //             LatLng(destination['latitude'], destination['longitude']);
-  //         destinationPositions.add(position);
-
-  //         final markerId =
-  //             'destination_marker_${destination['latitude']}_${destination['longitude']}';
-
-  //         markers.add(Marker(
-  //           markerId: MarkerId(markerId),
-  //           position: position,
-  //           onTap: () {
-  //             setState(() {
-  //               // _selectedDestination =
-  //               //     destination; // Update the selected destination
-  //             });
-  //           },
-  //         ));
-  //       }
-  //       polylines.clear();
-  //     });
-  //   } catch (e) {
-  //     print('Error initializing screen: $e');
-  //   }
-  // }
-
-  // void _onGenerateRouteClicked() {
-  //   List<LatLng> positions = markers.map((marker) => marker.position).toList();
-
-  //   // Ensure the user's location is included as the starting point
-  //   if (userLocation != null) {
-  //     positions.insert(0, userLocation!);
-  //   }
-
-  //   _generateRoute(positions);
-
-  //   // Set the route visibility to true
-  //   setState(() {
-  //     showRoute = true;
-  //   });
-  // }
-
-  //   Future<void> _getUserLocation() async {
-  //   //Position position = await getCurrentPosition();
-  //   try {
-  //     // Fetch current location (for demonstration purposes)
-  //     setState(() {
-  //       //Position position = await getCurrentPosition();
-  //       userLocation = //LatLng(position.latitude, position.longitude);
-  //           LatLng(
-  //               14.499111632246139, 121.18714131749572); // Example coordinates
-
-  //       // Add marker for user's location
-  //       // markers.add(
-  //       //   Marker(
-  //       //     markerId: MarkerId("user_location"),
-  //       //     position: userLocation!,
-  //       //     infoWindow: InfoWindow(title: "Your Location"),
-  //       //     icon: BitmapDescriptor.defaultMarkerWithHue(
-  //       //         BitmapDescriptor.hueBlue), // Custom marker color
-  //       //   ),
-  //       // );
-  //     });
-
-  //     // Move the camera to the user's location (ensure it's not null)
-  //     if (mapController != null && userLocation != null) {
-  //       mapController!.animateCamera(
-  //         CameraUpdate.newLatLngZoom(userLocation!, 14), // Adjust zoom level
-  //       );
-  //     }
-  //   } catch (e) {
-  //     print("Error fetching user location: $e");
-  //   }
-  // }

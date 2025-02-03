@@ -1,7 +1,7 @@
-import 'package:firestore_basics/itinerary%20Planner/itinerary%20trip%20list.dart';
+import 'package:firestore_basics/itinerary%20Planner/history.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:firestore_basics/itinerary%20Planner/itinerary%20trip%20list.dart';
+import 'package:firestore_basics/itinerary%20Planner/history.dart';
 
 class CarouselSlide extends StatefulWidget {
   @override
