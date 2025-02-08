@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
+import 'package:firestore_basics/Ui/forward_button_red.dart';
 import 'package:firestore_basics/itinerary%20generator/plan_itinerary.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -216,8 +217,12 @@ class _SelectDestinationsState extends State<SelectDestinations> {
           ),
           SizedBox(height: 5),
           Text(
-            "Address: ${_selectedDestination!['address'] ?? ''}",
+            'Pricing: ${_selectedDestination!['pricing'].toString()}',
             style: TextStyle(fontSize: 13),
+          ),
+          Text(
+            "Address: ${_selectedDestination!['address'] ?? ''}",
+            style: TextStyle(fontSize: 11),
           ),
           Spacer(),
           Column(
@@ -226,14 +231,14 @@ class _SelectDestinationsState extends State<SelectDestinations> {
             children: [
               ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                      fixedSize: Size(120, 0.5),
+                      fixedSize: Size(100, 0.5),
                       padding: EdgeInsets.only(top: 5, bottom: 5),
                       backgroundColor: Color(0xFFA52424),
                       foregroundColor: Colors.white),
                   onPressed: () {
                     _addToCart(_selectedDestination!);
                   },
-                  child: Text('Add to Cart', style: TextStyle(fontSize: 15))),
+                  child: Text('Add to Cart', style: TextStyle(fontSize: 12))),
             ],
           ),
         ],
@@ -282,17 +287,28 @@ class _SelectDestinationsState extends State<SelectDestinations> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: BackButtonRed(),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: BackButtonRed(),
+        ),
       ),
       body: Column(
         children: [
+          Padding(
+            padding: EdgeInsets.only(
+                right: 300), // Add padding to avoid touching the screen edge
+            child: Text(
+              '5 of 6',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ),
           Stack(
             children: [
               Center(
                 child: Container(
-                  padding: EdgeInsets.only(top: 50.0),
+                  padding: EdgeInsets.only(top: 30),
                   height: MediaQuery.of(context).size.height *
-                      0.55, // 50% of screen height
+                      0.50, // 50% of screen height
                   width: MediaQuery.of(context).size.width * 0.9,
                   child: GoogleMap(
                     initialCameraPosition: CameraPosition(
@@ -314,7 +330,7 @@ class _SelectDestinationsState extends State<SelectDestinations> {
           SizedBox(height: 20),
           //container of the destination details
           Container(
-            height: MediaQuery.of(context).size.height * 0.20,
+            height: MediaQuery.of(context).size.height * 0.2,
             width: MediaQuery.of(context).size.width * 0.9,
             decoration: BoxDecoration(
               color: Colors.white,
@@ -322,25 +338,25 @@ class _SelectDestinationsState extends State<SelectDestinations> {
             ),
             child: _buildDestinationDetails(),
           ),
+          SizedBox(
+            height: 30,
+          ),
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Container(
-                  margin: EdgeInsets.only(right: 10),
+                  margin: EdgeInsets.only(right: 20),
                   alignment: Alignment.center,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.arrow_circle_right,
-                      size: 50,
-                      color: Color(0xFFA52424),
-                    ),
+                  child: ForwardButtonRed(
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => PlanItinerary(
-                              cartItems: cartItems, numberOfDays: numberOfDays),
+                              cartItems: cartItems,
+                              numberOfDays: numberOfDays,
+                              selectedTripType: selectedTripType),
                         ),
                       );
                     },

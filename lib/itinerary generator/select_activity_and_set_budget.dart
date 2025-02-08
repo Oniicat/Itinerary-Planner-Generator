@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/Ui/forward_button_red.dart';
 import 'package:firestore_basics/Ui/textfield.dart';
+import 'package:firestore_basics/Ui/top_icon.dart';
 import 'package:firestore_basics/itinerary%20generator/select_destinations.dart';
 import 'package:flutter/material.dart';
 
@@ -49,11 +50,17 @@ class _SelectActivityState extends State<SelectActivity> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(10.0), // Set the height here
+        child: AppBar(
+          automaticallyImplyLeading: false,
+        ),
       ),
       body: Column(
         children: [
+          TopIcon(
+            text: '3 of 6',
+          ),
           SizedBox(height: 20),
           Text(
             'Type of Activity',
@@ -65,7 +72,7 @@ class _SelectActivityState extends State<SelectActivity> {
           SizedBox(height: 20),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(30.0),
+              padding: const EdgeInsets.all(10.0),
               width: MediaQuery.of(context).size.width * 0.82,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -76,7 +83,7 @@ class _SelectActivityState extends State<SelectActivity> {
                   crossAxisSpacing: 8.0, // Spacing between columns
                   mainAxisSpacing: 8.0, // Spacing between rows
                   childAspectRatio:
-                      2.1, // Width-to-height ratio for buttons in short sizing ng button
+                      2.5, // Width-to-height ratio for buttons in short sizing ng button
                 ),
                 itemCount: activityType.length,
                 itemBuilder: (context, index) {
@@ -237,19 +244,27 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
+      resizeToAvoidBottomInset: false,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(10.0), // Set the height here
+        child: AppBar(
+          automaticallyImplyLeading: false,
+        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(12.0),
         child: Column(
           children: [
+            TopIcon(text: '4 of 6'),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Budget',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFA52424)),
                 ),
                 const SizedBox(height: 20),
                 Center(
@@ -303,7 +318,10 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
                 SizedBox(height: 20),
                 Text(
                   'Number of Days',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFA52424)),
                 ),
                 SizedBox(height: 20),
                 Row(
@@ -317,7 +335,7 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(
-                      width: 30,
+                      width: 60,
                     ),
                     _buildDayDropdown()
                   ],

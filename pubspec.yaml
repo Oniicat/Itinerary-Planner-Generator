@@ -44,6 +44,7 @@ dependencies:
   smooth_page_indicator: ^1.2.0+3
   location: ^8.0.0
   intl: ^0.20.2
+  geolocator_platform_interface: ^4.2.4
   
   
 

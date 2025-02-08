@@ -14,7 +14,7 @@ class CreateItinerary extends StatefulWidget {
 
 Future<List<Map<String, dynamic>>> fetchFilteredDestinations(
     String? type) async {
-  Query query = FirebaseFirestore.instance.collection('Destinations');
+  Query query = FirebaseFirestore.instance.collection('test_destinations');
 
   if (type != null) {
     query = query.where('type', isEqualTo: type);
@@ -48,7 +48,7 @@ Future<List<String>> fetchLocationTypes() async {
   try {
     // Fetch all documents in the collection
     var snapshot =
-        await FirebaseFirestore.instance.collection('Destinations').get();
+        await FirebaseFirestore.instance.collection('test_destinations').get();
 
     if (snapshot.docs.isNotEmpty) {
       // Use a Set to collect unique types
@@ -443,8 +443,12 @@ class _CreateItineraryState extends State<CreateItinerary> {
           ),
           SizedBox(height: 5),
           Text(
-            "Address: ${_selectedDestination!['address'] ?? ''}",
+            'Pricing: ${_selectedDestination!['pricing'].toString()}',
             style: TextStyle(fontSize: 13),
+          ),
+          Text(
+            "Address: ${_selectedDestination!['address'] ?? ''}",
+            style: TextStyle(fontSize: 10),
           ),
           Spacer(),
           Column(
@@ -473,7 +477,10 @@ class _CreateItineraryState extends State<CreateItinerary> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: BackButtonRed(),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: BackButtonRed(),
+        ),
       ),
       body: Column(
         children: [
@@ -494,7 +501,6 @@ class _CreateItineraryState extends State<CreateItinerary> {
                 child: Row(
                   children: [
                     Icon(Icons.search),
-                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _selectedDestination != null
@@ -531,7 +537,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
             children: [
               Center(
                 child: Container(
-                  padding: EdgeInsets.only(top: 50.0),
+                  padding: EdgeInsets.only(top: 20.0),
                   height: MediaQuery.of(context).size.height *
                       0.55, // 50% of screen height
                   width: MediaQuery.of(context).size.width * 0.9,
@@ -556,6 +562,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
               if (_locationTypes.isNotEmpty)
                 Positioned(
                   top: 60,
+                  right: 60,
                   child: Container(
                     padding: EdgeInsets.only(left: 10, right: 10),
                     margin: EdgeInsets.only(left: 260),
@@ -587,10 +594,10 @@ class _CreateItineraryState extends State<CreateItinerary> {
                 ),
             ],
           ),
-          SizedBox(height: 20),
+          SizedBox(height: 10),
           //container of the destination details
           Container(
-            height: MediaQuery.of(context).size.height * 0.20,
+            height: MediaQuery.of(context).size.height * 0.2,
             width: MediaQuery.of(context).size.width * 0.9,
             decoration: BoxDecoration(
               color: Colors.white,
@@ -683,7 +690,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     // Query Firestore collection 'Destinations' for documents with name matching the query
     QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-        .collection('Destinations')
+        .collection('test_destinations')
         .where('name', isGreaterThanOrEqualTo: query)
         .where('name', isLessThan: '${query}z')
         .get();

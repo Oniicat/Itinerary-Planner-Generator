@@ -23,7 +23,10 @@ class _ItineraryListScreenState extends State<ItineraryListScreen> {
         // backgroundColor: Colors.transparent, // Transparent background
         // elevation: 0, // Removes shadow
         automaticallyImplyLeading: false,
-        leading: BackButtonRed(),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: BackButtonRed(),
+        ),
       ),
       body: Column(
         children: [
@@ -125,38 +128,38 @@ class _ItineraryListScreenState extends State<ItineraryListScreen> {
                                 );
                               },
                             ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton(
-                                style: ButtonStyle(
-                                  backgroundColor: WidgetStateProperty.all(
-                                      Color(0xFFA52424)),
-                                  foregroundColor:
-                                      WidgetStateProperty.all(Colors.white),
-                                ),
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      content: Text(
-                                          'Teka lang boss wala pa akong function'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text('Oumki'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  'Done',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ),
+                            // Align(
+                            //   alignment: Alignment.centerRight,
+                            //   child: ElevatedButton(
+                            //     style: ButtonStyle(
+                            //       backgroundColor: WidgetStateProperty.all(
+                            //           Color(0xFFA52424)),
+                            //       foregroundColor:
+                            //           WidgetStateProperty.all(Colors.white),
+                            //     ),
+                            //     onPressed: () {
+                            //       showDialog(
+                            //         context: context,
+                            //         builder: (context) => AlertDialog(
+                            //           content: Text(
+                            //               'Teka lang boss wala pa akong function'),
+                            //           actions: [
+                            //             TextButton(
+                            //               onPressed: () {
+                            //                 Navigator.pop(context);
+                            //               },
+                            //               child: Text('Oumki'),
+                            //             ),
+                            //           ],
+                            //         ),
+                            //       );
+                            //     },
+                            //     child: Text(
+                            //       'Done',
+                            //       style: TextStyle(color: Colors.white),
+                            //     ),
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),
@@ -337,133 +340,127 @@ class _TripDetailsState extends State<TripDetails> {
 
   Widget build(BuildContext context) {
     return Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: BackButtonRed(),
+          ),
+        ),
         body: SafeArea(
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              alignment: Alignment.topLeft,
-              child: IconButton(
-                icon: Icon(
-                  Icons.arrow_circle_left,
-                  size: 50,
-                  color: Color(0xFFA52424),
+          child: Center(
+            child: Column(
+              children: [
+                Text(
+                  'Trip Summary',
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-            Text(
-              'Trip Summary',
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 25),
-            Container(
-              height: MediaQuery.of(context).size.height * 0.6,
-              width: MediaQuery.of(context).size.width * 0.9,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.all(Radius.circular(10)),
-              ),
-              child: Column(
-                children: [
-                  Text(itineraryName,
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-                  Row(
-                    children: [
-                      SizedBox(width: 25),
-                      Text('Kind of Trip:',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 25),
-                      Text(
-                        'Triptrip lang',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ],
+                SizedBox(height: 25),
+                Container(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  width: MediaQuery.of(context).size.width * 0.9,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
                   ),
-                  Row(
+                  child: Column(
                     children: [
-                      SizedBox(width: 25),
-                      Text('No. of Days:',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 25),
-                      Text(
-                        ' $numberOfDays ',
-                        style: TextStyle(
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      if (numberOfDays > 0) _buildDayButtons(),
-                      SizedBox(height: 20),
-                      if (selectedDay > 0)
-                        Container(
-                          height: MediaQuery.of(context).size.height * 0.3,
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            border: Border.all(color: Colors.grey),
+                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          SizedBox(width: 25),
+                          Text('Trip Name:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          SizedBox(width: 25),
+                          Text(
+                            '$itineraryName',
+                            style: TextStyle(fontSize: 18),
                           ),
-                          child: showDayDetails(selectedDay),
-                        ),
-                      if (selectedDay == 0)
-                        Container(
-                          height: MediaQuery.of(context).size.height * 0.3,
-                          width: MediaQuery.of(context).size.width * 0.75,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black),
-                          ),
-                          child: Center(
-                              child: Text('Select a day to view details')),
-                        ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    style: ButtonStyle(
-                      backgroundColor:
-                          WidgetStateProperty.all(Color(0xFFA52424)),
-                      foregroundColor: WidgetStateProperty.all(Colors.white),
-                    ),
-                    onPressed: () {
-                      if (dailyDestinations[selectedDay] != null) {
-                        _updateMapForSelectedDay(); // Ensure markers are set
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ViewTrip(
-                              itineraryName: itineraryName,
-                              selectedDayDestinations:
-                                  dailyDestinations[selectedDay]!,
-                              markers: markers,
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          SizedBox(width: 25),
+                          Text('No. of Days:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          SizedBox(width: 25),
+                          Text(
+                            ' $numberOfDays ',
+                            style: TextStyle(
+                              fontSize: 18,
                             ),
                           ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  'No destinations for the selected day!')),
-                        );
-                      }
-                    },
-                    child: Text('View'),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          if (numberOfDays > 0) _buildDayButtons(),
+                          SizedBox(height: 20),
+                          if (selectedDay > 0)
+                            Container(
+                              height: MediaQuery.of(context).size.height * 0.3,
+                              width: MediaQuery.of(context).size.width * 0.8,
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10)),
+                                border: Border.all(color: Colors.grey),
+                              ),
+                              child: showDayDetails(selectedDay),
+                            ),
+                          if (selectedDay == 0)
+                            Container(
+                              height: MediaQuery.of(context).size.height * 0.3,
+                              width: MediaQuery.of(context).size.width * 0.75,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.black),
+                              ),
+                              child: Center(
+                                  child: Text('Select a day to view details')),
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        style: ButtonStyle(
+                          backgroundColor:
+                              WidgetStateProperty.all(Color(0xFFA52424)),
+                          foregroundColor:
+                              WidgetStateProperty.all(Colors.white),
+                        ),
+                        onPressed: () {
+                          if (dailyDestinations[selectedDay] != null) {
+                            _updateMapForSelectedDay(); // Ensure markers are set
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ViewTrip(
+                                  itineraryName: itineraryName,
+                                  selectedDay: selectedDay,
+                                  selectedDayDestinations:
+                                      dailyDestinations[selectedDay]!,
+                                  markers: markers,
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'No destinations for the selected day!')),
+                            );
+                          }
+                        },
+                        child: Text('View'),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                SizedBox(height: 40),
+              ],
             ),
-            SizedBox(height: 40),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }

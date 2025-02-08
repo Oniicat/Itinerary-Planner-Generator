@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firestore_basics/Directions/directions_repository.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/itinerary%20Planner/tripsummary.dart';
@@ -102,6 +104,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                   // Fix index adjustment during reordering
                   if (newIndex > oldIndex) {
                     newIndex -= 1;
+                    _updateMapForSelectedDay();
                   }
                   final item = destinations.removeAt(oldIndex);
                   destinations.insert(newIndex, item);
@@ -111,7 +114,8 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 });
               },
               children: List.generate(destinations.length, (index) {
-                var destination = destinations[index];
+                // Reverse the list to ensure that the route starts from the top
+                var destination = destinations[destinations.length - index - 1];
                 return Card(
                   key: ValueKey(destination),
                   color: Colors.white,
@@ -125,6 +129,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                         setState(() {
                           destinations.removeAt(index);
                           dailyDestinations[day] = destinations;
+                          _updateMapForSelectedDay();
                         });
                       },
                     ),
@@ -203,6 +208,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                                         setState(() {
                                           destinations.add(item);
                                           dailyDestinations[day] = destinations;
+                                          _updateMapForSelectedDay();
                                         });
 
                                         Navigator.pop(context);
@@ -264,15 +270,9 @@ class _MapwithitemsState extends State<Mapwithitems> {
         ));
       }
 
-      markers.add(Marker(
-        markerId: MarkerId('user_location'),
-        position: userLocation!,
-        infoWindow: InfoWindow(title: 'This is you nigga'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-      ));
-      _generateRoute(destinations
-          .map((d) => LatLng(d['latitude'], d['longitude']))
-          .toList());
+      _generateRoute();
+      fetchAndShowCurrentLocation();
+      startLocationStream();
     });
   }
 
@@ -363,7 +363,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 BitmapDescriptor.hueOrange),
           ),
         );
-        _generateRoute([]);
+        _generateRoute();
       });
     });
 
@@ -395,6 +395,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
     });
   }
 
+  // Your one-time fetch function remains the same
   Future<void> fetchAndShowCurrentLocation() async {
     setState(() {
       isLoading = true;
@@ -404,7 +405,6 @@ class _MapwithitemsState extends State<Mapwithitems> {
       Position position = await getCurrentPosition();
       LatLng userLocation = LatLng(position.latitude, position.longitude);
 
-      // Update markers and move camera
       setState(() {
         markers.add(
           Marker(
@@ -415,14 +415,13 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 BitmapDescriptor.hueOrange),
           ),
         );
-        _generateRoute([]);
+        _generateRoute();
       });
 
       mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(userLocation, 15),
       );
     } catch (e) {
-      // Show error as a snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),
       );
@@ -433,34 +432,84 @@ class _MapwithitemsState extends State<Mapwithitems> {
     }
   }
 
+// New function for live tracking using a stream:
+  StreamSubscription<Position>? _positionStreamSubscription;
+
+  void startLocationStream() {
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: LocationSettings(
+        distanceFilter: 1, // meters
+      ),
+    ).listen((Position position) {
+      LatLng userLocation = LatLng(position.latitude, position.longitude);
+      setState(() {
+        // Remove the old marker and add a new one:
+        markers.removeWhere((marker) => marker.markerId.value == "MyLocation");
+        markers.add(
+          Marker(
+            markerId: MarkerId("MyLocation"),
+            position: userLocation,
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
+        );
+      });
+      // Update the route and camera position:
+      _generateRoute();
+      mapController?.animateCamera(CameraUpdate.newLatLng(userLocation));
+    });
+  }
+
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    super.dispose();
+  }
+
 //for generating the travel route
-  Future<void> _generateRoute(List<LatLng> positions) async {
+  Future<void> _generateRoute() async {
     showRoute = true;
+    // Use the markers to get positions
     List<LatLng> positions = markers.map((marker) => marker.position).toList();
+    if (positions.length < 2) return; // Not enough points to create a route
+
     List<LatLng> routePoints = [];
+    double totalDistanceValue = 0;
+    double totalDurationValue = 0;
 
     for (int i = 0; i < positions.length - 1; i++) {
-      final directions = await DirectionsRepository().getDirections(
-        userLocation: positions[i],
-        pointB: positions[i + 1],
-      );
+      try {
+        final directions = await DirectionsRepository().getDirections(
+          userLocation: positions[i],
+          pointB: positions[i + 1],
+        );
 
-      // ignore: unnecessary_null_comparison
-      if (directions != null) {
-        // Update route points
-        routePoints.addAll(directions.polylinePoints
-            .map((e) => LatLng(e.latitude, e.longitude))
-            .toList());
+        // Parse the distance and duration from the directions object.
+        // You need to implement these helpers based on your API response format.
+        double distance =
+            _parseDistance(directions.totalDistance); // e.g., "5.3 km" -> 5.3
+        double duration =
+            _parseDuration(directions.totalDuration); // e.g., "15 mins" -> 15
 
-        // Update the _info variable to hold total distance and duration
-        setState(() {
-          _info = directions;
-        });
+        totalDistanceValue += distance;
+        totalDurationValue += duration;
+
+        // Add polyline points from this segment.
+        routePoints.addAll(directions.polylinePoints);
+      } catch (e) {
+        print('Error fetching directions for segment $i: $e');
       }
     }
 
-    // Update the polyline with the new route
+    // Update the _info object with aggregated route details.
     setState(() {
+      _info = Directions(
+        totalDistance: '${totalDistanceValue.toStringAsFixed(1)} km',
+        totalDuration: '${totalDurationValue.toStringAsFixed(1)} mins',
+        polylinePoints: routePoints,
+      );
+
       polylines = {
         Polyline(
           polylineId: PolylineId('itinerary_route'),
@@ -470,6 +519,20 @@ class _MapwithitemsState extends State<Mapwithitems> {
         ),
       };
     });
+
+    print("Added ${polylines.length} polyline segments for the route.");
+  }
+
+// Example helper functions (implement according to your format):
+  double _parseDistance(String distanceText) {
+    // Assuming distanceText is like "5.3 km"
+    // Remove non-numeric parts and convert to double.
+    return double.tryParse(distanceText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+  }
+
+  double _parseDuration(String durationText) {
+    // Assuming durationText is like "15 mins"
+    return double.tryParse(durationText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
   }
 
 //for showing the distance and duration
@@ -611,8 +674,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                             context: context,
                             builder: (context) {
                               return AlertDialog(
-                                content: Text(
-                                    'Tol pangalanan mo naman muna yung trip mo'),
+                                content: Text('Please name your trip'),
                                 actions: [
                                   TextButton(
                                     onPressed: () {
@@ -670,18 +732,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 ),
               ],
             ),
-            // Fetch Location Button
-            Positioned(
-              top: 140,
-              left: 20,
-              child: ElevatedButton(
-                onPressed: () {
-                  _getCurrentLocation();
-                  //_onGenerateRouteClicked();
-                },
-                child: Icon(Icons.my_location, size: 30, color: Colors.red),
-              ),
-            ),
+
             // Draggable Scrollable Sheet
             DraggableScrollableSheet(
               initialChildSize: 0.3,

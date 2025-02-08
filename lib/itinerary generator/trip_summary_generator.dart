@@ -4,27 +4,29 @@ import 'package:firestore_basics/Ui/navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class TripSummary extends StatefulWidget {
+class TripSummaryGenerator extends StatefulWidget {
   final String itineraryName;
   final int numberOfDays;
+  final String? selectedTripType;
   final Map<int, List<Map<String, dynamic>>> dailyDestinations;
-  const TripSummary({
-    super.key,
-    required this.itineraryName,
-    required this.numberOfDays,
-    required this.dailyDestinations,
-  });
+  const TripSummaryGenerator(
+      {super.key,
+      required this.itineraryName,
+      required this.numberOfDays,
+      required this.dailyDestinations,
+      required this.selectedTripType});
 
   @override
-  State<TripSummary> createState() => _TripSummaryState();
+  State<TripSummaryGenerator> createState() => _TripSummaryGeneratorState();
 }
 
-class _TripSummaryState extends State<TripSummary> {
+class _TripSummaryGeneratorState extends State<TripSummaryGenerator> {
   Set<Marker> markers = {};
   int numberOfDays = 0; // Total days
   int selectedDay = 0;
   Map<int, List<Map<String, dynamic>>> dailyDestinations = {};
   String itineraryName = '';
+  String? selectedTripType;
   Widget showDayDetails(int day) {
     List<Map<String, dynamic>> destinations = dailyDestinations[day]!;
 
@@ -200,6 +202,7 @@ class _TripSummaryState extends State<TripSummary> {
     numberOfDays = widget.numberOfDays;
     dailyDestinations = widget.dailyDestinations;
     itineraryName = widget.itineraryName;
+    selectedTripType = widget.selectedTripType;
   }
 
   @override
@@ -227,7 +230,6 @@ class _TripSummaryState extends State<TripSummary> {
                   ),
                   child: Column(
                     children: [
-                      SizedBox(height: 10),
                       Row(
                         children: [
                           SizedBox(width: 25),

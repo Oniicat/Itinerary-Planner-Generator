@@ -1,17 +1,25 @@
+import 'dart:async';
+
 import 'package:firestore_basics/Directions/directions_model.dart';
 import 'package:firestore_basics/Directions/directions_repository.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/itinerary%20Planner/tripsummary.dart';
+import 'package:firestore_basics/itinerary%20generator/trip_summary_generator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 
 class PlanItinerary extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
   final int numberOfDays;
+  final String? selectedTripType;
   const PlanItinerary(
-      {super.key, required this.cartItems, required this.numberOfDays});
+      {super.key,
+      required this.cartItems,
+      required this.numberOfDays,
+      required this.selectedTripType});
 
   @override
   State<PlanItinerary> createState() => _PlanItineraryState();
@@ -21,6 +29,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
   GoogleMapController? mapController;
   Set<Marker> markers = {};
   Map<String, dynamic>? _selectedDestination;
+  String? selectedTripType;
   LatLng? userLocation =
       LatLng(14.499111632246139, 121.18714131749572); //dummy muna
   List<Map<String, dynamic>> cartItems = [];
@@ -32,7 +41,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
   Set<Polyline> polylines = {}; // Polylines for the route
   final TextEditingController itineraryNameController =
       TextEditingController(); // for naming the itinerary
-
+  bool isLoading = false;
   LocationData? currentLocation; // Current user location
 
   Map<int, List<Map<String, dynamic>>> dailyDestinations = {};
@@ -104,6 +113,65 @@ class _PlanItineraryState extends State<PlanItinerary> {
     });
   }
 
+  //permission for accessing gps
+  Future<Position> getCurrentPosition() async {
+    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceEnabled) {
+      throw Exception("Location services are disabled. Please enable them.");
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception("Location permissions are denied.");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception("Location permissions are permanently denied.");
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  // Your one-time fetch function remains the same
+  Future<void> fetchAndShowCurrentLocation() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      Position position = await getCurrentPosition();
+      LatLng userLocation = LatLng(position.latitude, position.longitude);
+
+      setState(() {
+        markers.add(
+          Marker(
+            markerId: MarkerId("MyLocation"),
+            position: userLocation,
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
+        );
+        _generateRoute();
+      });
+
+      mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(userLocation, 15),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   //arrangement of buttons of days
   Widget _buildDayButtons() {
     return SingleChildScrollView(
@@ -157,15 +225,9 @@ class _PlanItineraryState extends State<PlanItinerary> {
         ));
       }
 
-      markers.add(Marker(
-        markerId: MarkerId('user_location'),
-        position: userLocation!,
-        infoWindow: InfoWindow(title: 'This is you nigga'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-      ));
-      _generateRoute(destinations
-          .map((d) => LatLng(d['latitude'], d['longitude']))
-          .toList());
+      _generateRoute();
+      fetchAndShowCurrentLocation();
+      startLocationStream();
     });
   }
 
@@ -207,6 +269,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
                   // Fix index adjustment during reordering
                   if (newIndex > oldIndex) {
                     newIndex -= 1;
+                    _updateMapForSelectedDay();
                   }
                   final item = destinations.removeAt(oldIndex);
                   destinations.insert(newIndex, item);
@@ -216,7 +279,8 @@ class _PlanItineraryState extends State<PlanItinerary> {
                 });
               },
               children: List.generate(destinations.length, (index) {
-                var destination = destinations[index];
+                // Reverse the list to ensure that the route starts from the top
+                var destination = destinations[destinations.length - index - 1];
                 return Card(
                   key: ValueKey(destination),
                   color: Colors.white,
@@ -230,6 +294,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
                         setState(() {
                           destinations.removeAt(index);
                           dailyDestinations[day] = destinations;
+                          _updateMapForSelectedDay();
                         });
                       },
                     ),
@@ -308,6 +373,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
                                         setState(() {
                                           destinations.add(item);
                                           dailyDestinations[day] = destinations;
+                                          _updateMapForSelectedDay();
                                         });
 
                                         Navigator.pop(context);
@@ -364,7 +430,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
                 BitmapDescriptor.hueOrange),
           ),
         );
-        _generateRoute([]);
+        _generateRoute();
       });
     });
 
@@ -396,34 +462,84 @@ class _PlanItineraryState extends State<PlanItinerary> {
     });
   }
 
-  //for generating the travel route
-  Future<void> _generateRoute(List<LatLng> positions) async {
+  // New function for live tracking using a stream:
+  StreamSubscription<Position>? _positionStreamSubscription;
+
+  void startLocationStream() {
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: LocationSettings(
+        distanceFilter: 1, // meters
+      ), // Adjust as needed
+    ).listen((Position position) {
+      LatLng userLocation = LatLng(position.latitude, position.longitude);
+      setState(() {
+        // Remove the old marker and add a new one:
+        markers.removeWhere((marker) => marker.markerId.value == "MyLocation");
+        markers.add(
+          Marker(
+            markerId: MarkerId("MyLocation"),
+            position: userLocation,
+            infoWindow: InfoWindow(title: "Your Location"),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
+        );
+      });
+      // Optionally update the route and camera position:
+      _generateRoute();
+      mapController?.animateCamera(CameraUpdate.newLatLng(userLocation));
+    });
+  }
+
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    super.dispose();
+  }
+
+//for generating the travel route
+  Future<void> _generateRoute() async {
     showRoute = true;
+    // Use the markers to get positions
     List<LatLng> positions = markers.map((marker) => marker.position).toList();
+    if (positions.length < 2) return; // Not enough points to create a route
+
     List<LatLng> routePoints = [];
+    double totalDistanceValue = 0;
+    double totalDurationValue = 0;
 
     for (int i = 0; i < positions.length - 1; i++) {
-      final directions = await DirectionsRepository().getDirections(
-        userLocation: positions[i],
-        pointB: positions[i + 1],
-      );
+      try {
+        final directions = await DirectionsRepository().getDirections(
+          userLocation: positions[i],
+          pointB: positions[i + 1],
+        );
 
-      // ignore: unnecessary_null_comparison
-      if (directions != null) {
-        // Update route points
-        routePoints.addAll(directions.polylinePoints
-            .map((e) => LatLng(e.latitude, e.longitude))
-            .toList());
+        // Parse the distance and duration from the directions object.
+        // You need to implement these helpers based on your API response format.
+        double distance =
+            _parseDistance(directions.totalDistance); // e.g., "5.3 km" -> 5.3
+        double duration =
+            _parseDuration(directions.totalDuration); // e.g., "15 mins" -> 15
 
-        // Update the _info variable to hold total distance and duration
-        setState(() {
-          _info = directions;
-        });
+        totalDistanceValue += distance;
+        totalDurationValue += duration;
+
+        // Add polyline points from this segment.
+        routePoints.addAll(directions.polylinePoints);
+      } catch (e) {
+        print('Error fetching directions for segment $i: $e');
       }
     }
 
-    // Update the polyline with the new route
+    // Update the _info object with aggregated route details.
     setState(() {
+      _info = Directions(
+        totalDistance: '${totalDistanceValue.toStringAsFixed(1)} km',
+        totalDuration: '${totalDurationValue.toStringAsFixed(1)} mins',
+        polylinePoints: routePoints,
+      );
+
       polylines = {
         Polyline(
           polylineId: PolylineId('itinerary_route'),
@@ -433,23 +549,44 @@ class _PlanItineraryState extends State<PlanItinerary> {
         ),
       };
     });
+
+    print("Added ${polylines.length} polyline segments for the route.");
+  }
+
+// Example helper functions (implement according to your format):
+  double _parseDistance(String distanceText) {
+    // Assuming distanceText is like "5.3 km"
+    // Remove non-numeric parts and convert to double.
+    return double.tryParse(distanceText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+  }
+
+  double _parseDuration(String durationText) {
+    // Assuming durationText is like "15 mins"
+    return double.tryParse(durationText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
   }
 
   @override
   void initState() {
     //numberOfDays = widget.numberOfDays;
     cartItems = widget.cartItems;
+    selectedTripType = widget.selectedTripType;
     dailydestinationlist();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: BackButtonRed(),
+        ),
+      ),
       // resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           children: [
-            Positioned(top: 65, left: 65, child: _showdistanddur()),
             // Google Map
             Center(
               child: Container(
@@ -473,7 +610,13 @@ class _PlanItineraryState extends State<PlanItinerary> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                BackButtonRed(),
+                SizedBox(
+                  width: 20,
+                ),
+                Text(
+                  '6 of 6',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
                 Spacer(),
                 Container(
                   alignment: Alignment.topRight,
@@ -486,8 +629,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
                             context: context,
                             builder: (context) {
                               return AlertDialog(
-                                content: Text(
-                                    'Tol pangalanan mo naman muna yung trip mo'),
+                                content: Text('Please name your trip'),
                                 actions: [
                                   TextButton(
                                     onPressed: () {
@@ -520,10 +662,12 @@ class _PlanItineraryState extends State<PlanItinerary> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => TripSummary(
+                                      builder: (context) =>
+                                          TripSummaryGenerator(
                                         itineraryName: itineraryName,
                                         numberOfDays: numberOfDays,
                                         dailyDestinations: dailyDestinations,
+                                        selectedTripType: selectedTripType,
                                       ),
                                     ),
                                   );
@@ -545,18 +689,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
                 ),
               ],
             ),
-            // Fetch Location Button
-            Positioned(
-              top: 140,
-              left: 20,
-              child: ElevatedButton(
-                onPressed: () {
-                  _getCurrentLocation();
-                  //_onGenerateRouteClicked();
-                },
-                child: Icon(Icons.my_location, size: 30, color: Colors.red),
-              ),
-            ),
+
             // Draggable Scrollable Sheet
             DraggableScrollableSheet(
               initialChildSize: 0.3,
@@ -603,12 +736,6 @@ class _PlanItineraryState extends State<PlanItinerary> {
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
-                              ElevatedButton(
-                                  onPressed: () {
-                                    print('ilang araw $numberOfDays');
-                                    print('cart items $cartItems');
-                                  },
-                                  child: Text('testing')),
                               SizedBox(height: 5),
                               SizedBox(
                                 width: MediaQuery.of(context).size.width * 0.7,
@@ -642,7 +769,12 @@ class _PlanItineraryState extends State<PlanItinerary> {
                   ),
                 );
               },
-            )
+            ),
+            Center(
+                child: Padding(
+              padding: const EdgeInsets.only(bottom: 450),
+              child: _showdistanddur(),
+            )),
           ],
         ),
       ),
