@@ -1,32 +1,13 @@
 {
   "project_info": {
-    "project_number": "731813576417",
-    "project_id": "lakbayrizal-73493",
-    "storage_bucket": "lakbayrizal-73493.firebasestorage.app"
+    "project_number": "499440161118",
+    "project_id": "lakbay-rizal",
+    "storage_bucket": "lakbay-rizal.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:731813576417:android:fec97d8a7963e060f301a0",
-        "android_client_info": {
-          "package_name": "com.example.lakbay_rizal"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyA9gXo65BqY8g4fWzWq4oo0ReVui-I-XRs"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:731813576417:android:a1daa97468c230d3f301a0",
+        "mobilesdk_app_id": "1:499440161118:android:44c6c5766b675779fd7fcf",
         "android_client_info": {
           "package_name": "com.lakbayrizal.firestore_basics"
         }
@@ -34,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA9gXo65BqY8g4fWzWq4oo0ReVui-I-XRs"
+          "current_key": "AIzaSyBXT4Mwf5xL6dQ2OUfGoc7UvEGp7padTqY"
         }
       ],
       "services": {

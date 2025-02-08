@@ -38,6 +38,14 @@ dependencies:
   flutter_polyline_points: ^2.1.0
   firebase_core: ^3.8.1
   cloud_firestore: ^5.5.1
+  geolocator: ^13.0.2
+  dio: ^5.7.0
+  carousel_slider: ^5.0.0
+  smooth_page_indicator: ^1.2.0+3
+  location: ^8.0.0
+  intl: ^0.20.2
+  geolocator_platform_interface: ^4.2.4
+  
   
 
 dev_dependencies:
@@ -63,9 +71,41 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/itinerary genrator.png
+    - assets/discover rizal.png
+    - assets/tour guide.png
+    - assets/Rae.jpeg
+    - assets/LOGO.png
+    - assets/Itinerary generator.png
+    - assets/About rizal.png
+    - assets/tour guide booking.png
+    - assets/dest1.png
+    -  assets/dest2.jpg
+    - assets/dest3.jpg
+    - assets/dest4.jpg
+    - assets/wheel.png
+    - assets/river.png
+    - assets/lakbay rizal.png
+    - assets/beach.jpg
+    - assets/hiking.jpg
+    - assets/museum.jpg
+    - assets/baras tourism office.png
+    - assets/angono logo.png
+    - assets/binangonan logo.png
+    - assets/cainta logo.png
+    - assets/cardona logo.png
+    - assets/jala-jala logo.png
+    - assets/montalban logo.png
+    - assets/morong logo.png
+    - assets/pililla logo.png
+    - assets/san mateo logo.png
+    - assets/tanay logo.png
+    - assets/taytay logo.png
+    - assets/teresa logo.png
+
+
+    
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

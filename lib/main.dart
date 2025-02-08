@@ -1,9 +1,10 @@
-import 'package:firestore_basics/map_sample.dart';
+import 'package:firestore_basics/Ui/navbar.dart';
+import 'package:firestore_basics/itinerary%20Planner/map.dart';
+import 'package:firestore_basics/itinerary%20generator/select_municipality_and_kind_of_trip.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
+void main() async {
   //only include this if using a web
   // Firebase.initializeApp(
   //     options: FirebaseOptions(
@@ -15,7 +16,7 @@ void main() {
   //         appId: "1:731813576417:web:e42121fb63b119bbf301a0",
   //         measurementId: "G-CCTWDT7L03"));
   WidgetsFlutterBinding.ensureInitialized();
-  Firebase.initializeApp();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -27,12 +28,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      home: MapWidget(),
+      home: NavBar(),
     );
   }
 }
 
 class MyWidget extends StatefulWidget {
+  const MyWidget({super.key});
+
   @override
   State<MyWidget> createState() => _MyWidgetState();
 }
