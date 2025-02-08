@@ -71,8 +71,7 @@ class CartScreenState extends State<CartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(item['address'] ?? "No address provided"),
-                            Text("Latitude: ${item['latitude']}"),
-                            Text("Longitude: ${item['longitude']}"),
+                            Text("Pricing: ${item['pricing']}")
                           ],
                         ),
                         trailing: IconButton(

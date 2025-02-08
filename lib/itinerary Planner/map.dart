@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,37 +12,6 @@ class CreateItinerary extends StatefulWidget {
 
   @override
   State<CreateItinerary> createState() => _CreateItineraryState();
-}
-
-Future<List<Map<String, dynamic>>> fetchFilteredDestinations(
-    String? type) async {
-  Query query = FirebaseFirestore.instance.collection('test_destinations');
-
-  if (type != null) {
-    query = query.where('type', isEqualTo: type);
-  }
-
-  var snapshot = await query.get();
-
-  if (snapshot.docs.isNotEmpty) {
-    return snapshot.docs.map((doc) {
-      var data = doc.data() as Map<String, dynamic>;
-      return {
-        'name': data['name'], // Name of the destination
-        'latitude': data['latitude']?.toDouble() ?? 0.0,
-        'longitude': data['longitude']?.toDouble() ?? 0.0,
-        'type': data['type'], // Type of the destination
-        'description': data['description'] ?? "No description available",
-        'address': data['address'] ?? "No address available",
-        'contact': data['contact'] ?? "No contact available"
-      };
-    }).toList();
-  } else {
-    if (kDebugMode) {
-      print("No destinations found for type: $type");
-    }
-    return [];
-  }
 }
 
 //fetch the location type
@@ -87,6 +58,8 @@ class _CreateItineraryState extends State<CreateItinerary> {
   Map<String, dynamic>? _selectedDestination;
   final List<Map<String, dynamic>> _cartItems = [];
 
+  Set<String> selectedTypes = {}; // Track selected types
+  List<String> activityTypes = [];
   // Search functionality
   final TextEditingController _searchController = TextEditingController();
 
@@ -95,6 +68,8 @@ class _CreateItineraryState extends State<CreateItinerary> {
     super.initState();
     _initializeScreen();
     _getUserLocation();
+    _loadActivityTypes();
+    _fetchDestinations();
   }
 
   //function ng add to cart
@@ -171,21 +146,6 @@ class _CreateItineraryState extends State<CreateItinerary> {
     }
   }
 
-// Update the filtered list of destinations based on search query
-  // void _filterDestinations(String query) {
-  //   setState(() {
-  //     if (query.isEmpty) {
-  //       _filteredDestinations = [];
-  //       _fetchDestinations();
-  //     } else {
-  //       _filteredDestinations = _filteredDestinations
-  //           .where((destination) =>
-  //               destination['name'].toLowerCase().contains(query.toLowerCase()))
-  //           .toList();
-  //     }
-  //   });
-  // }
-
   // Focus the map on the selected destination
   void _focusOnDestination(Map<String, dynamic> destination) {
     final LatLng destinationLatLng = LatLng(
@@ -210,6 +170,8 @@ class _CreateItineraryState extends State<CreateItinerary> {
       CameraUpdate.newLatLngZoom(destinationLatLng, 18.0),
     );
   }
+
+//new filter button for testing
 
 //kunyare lang to
   Future<void> _getUserLocation() async {
@@ -267,163 +229,93 @@ class _CreateItineraryState extends State<CreateItinerary> {
     }
   }
 
-  Future<void> _fetchDestinations() async {
+  Future<void> _loadActivityTypes() async {
+    QuerySnapshot snapshot =
+        await FirebaseFirestore.instance.collection('typeofactivity').get();
+
+    setState(() {
+      activityTypes =
+          snapshot.docs.map((doc) => doc['name'].toString()).toList();
+    });
+  }
+
+  Future<void> _fetchDestinations({bool showAll = true}) async {
     try {
-      var destinations = await fetchFilteredDestinations(
-          _selectedType == 'All' ? null : _selectedType);
+      markers.clear();
+
+      List<Map<String, dynamic>> destinations = [];
+      if (showAll) {
+        // Fetch all destinations
+        destinations = await fetchFilteredDestinations(null);
+      } else {
+        for (var type in selectedTypes) {
+          var filtered = await fetchFilteredDestinations(type);
+          destinations.addAll(filtered);
+        }
+      }
 
       setState(() {
-        markers.clear();
-        showRoute = false;
-        List<LatLng> destinationPositions = [];
-        // Store filtered destinations
-        //_filteredDestinations = destinations;
-
         for (var destination in destinations) {
-          final position =
-              LatLng(destination['latitude'], destination['longitude']);
-          destinationPositions.add(position);
+          final position = LatLng(
+            destination['latitude'],
+            destination['longitude'],
+          );
 
           final markerId =
               'destination_marker_${destination['latitude']}_${destination['longitude']}';
 
-          markers.add(Marker(
-            markerId: MarkerId(markerId),
-            position: position,
-            onTap: () {
-              setState(() {
-                _selectedDestination =
-                    destination; // Update the selected destination
-              });
-            },
-          ));
+          markers.add(
+            Marker(
+              markerId: MarkerId(markerId),
+              position: position,
+              infoWindow: InfoWindow(title: destination['name']),
+              onTap: () {
+                setState(() {
+                  _selectedDestination = destination;
+                });
+              },
+            ),
+          );
         }
-
-        // Add user location marker
-        // if (userLocation != null) {
-        //   markers.add(Marker(
-        //     markerId: MarkerId("user_location"),
-        //     position: userLocation!,
-        //     infoWindow: InfoWindow(title: "Your Location"),
-        //     icon:
-        //         BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        //   ));
-
-        //   destinationPositions.insert(
-        //       0, userLocation!); // Add user's location as the starting point
-        // }
-
-        // Generate polylines for the entire route
-        // _generateRoute(destinationPositions);
-        _selectedDestination = null;
-        polylines.clear();
       });
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching destinations: $e');
-      } //for catching an error bai
+      }
     }
   }
 
-//clicking the clear route button
-//   void _clearRoute() {
-//     setState(() {
-//       polylines.clear();
-//       showRoute = false;
-//     });
-//   }
+  Future<List<Map<String, dynamic>>> fetchFilteredDestinations(
+      String? type) async {
+    Query query = FirebaseFirestore.instance.collection('test_destinations');
 
-// // extended funtion for  generate route button (still need to be fixed)
-//   void _onGenerateRouteClicked() {
-//     List<LatLng> positions = markers.map((marker) => marker.position).toList();
+    // Check if a specific type filter is provided
+    if (type != null && type.isNotEmpty) {
+      query = query.where('type', isEqualTo: type);
+    }
 
-//     // Ensure the user's location is included as the starting point
-//     if (userLocation != null) {
-//       positions.insert(0, userLocation!);
-//     }
+    var snapshot = await query.get();
 
-//     _generateRoute(positions);
-
-//     // Set the route visibility to true
-//     setState(() {
-//       showRoute = true;
-//     });
-//   }
-
-// //for showing the distance and duration
-//   Widget _showdistanddur() {
-//     if (showRoute != true) {
-//       return SizedBox.shrink();
-//     } else
-//       return Container(
-//         padding: const EdgeInsets.symmetric(
-//           vertical: 6.0,
-//           horizontal: 12.0,
-//         ),
-//         decoration: BoxDecoration(
-//           color: Colors.white,
-//           borderRadius: BorderRadius.circular(20.0),
-//           border: Border.all(color: Colors.black, width: 2.0),
-//         ),
-//         child: _info != null
-//             ? Text(
-//                 'Duration: ${_info?.totalDuration}, Distance: ${_info?.totalDistance}',
-//                 style: const TextStyle(fontSize: 18.0, color: Colors.black),
-//               )
-//             : Text(
-//                 'Generating route...',
-//                 style: const TextStyle(fontSize: 18.0, color: Colors.black),
-//               ),
-//       );
-//   }
-
-//for generating the travel route
-  // Future<void> _generateRoute(List<LatLng> positions) async {
-  //   try {
-  //     showRoute = true;
-  //     List<LatLng> routePoints = [];
-
-  //     for (int i = 0; i < positions.length - 1; i++) {
-  //       final directions = await DirectionsRepository().getDirections(
-  //         userLocation: positions[i],
-  //         pointB: positions[i + 1],
-  //       );
-
-  //       if (directions != null) {
-  //         // Update route points
-  //         routePoints.addAll(directions.polylinePoints
-  //             .map((e) => LatLng(e.latitude, e.longitude))
-  //             .toList());
-
-  //         // Update the _info variable to hold total distance and duration
-  //         setState(() {
-  //           _info = directions;
-  //         });
-  //       }
-  //     }
-
-  //     // Update the polyline with the new route
-  //     setState(() {
-  //       polylines = {
-  //         Polyline(
-  //           polylineId: PolylineId('itinerary_route'),
-  //           color: Colors.purple,
-  //           width: 5,
-  //           points: routePoints,
-  //         ),
-  //       };
-  //     });
-  //   } catch (e) {
-  //     print('Error generating route: $e');
-  //   }
-  // }
-
-//
-  void _onFilterChanged(String? type) {
-    setState(() {
-      _selectedType = type ?? 'All'; // Fallback to 'All' if type is null
-    });
-    _fetchDestinations(); // Fetch destinations with the selected filter
+    if (snapshot.docs.isNotEmpty) {
+      return snapshot.docs.map((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        return {
+          'name': data['name'],
+          'latitude': data['latitude']?.toDouble() ?? 0.0,
+          'longitude': data['longitude']?.toDouble() ?? 0.0,
+          'type': data['type'],
+          'description': data['description'] ?? "No description available",
+          'address': data['address'] ?? "No address available",
+          'contact': data['contact'] ?? "No contact available",
+          'pricing': data['pricing']?.toDouble() ?? 0.0,
+        };
+      }).toList();
+    } else {
+      if (kDebugMode) {
+        print("No destinations found for type: $type");
+      }
+      return [];
+    }
   }
 
 //destination info when a marker is clicked
@@ -484,55 +376,6 @@ class _CreateItineraryState extends State<CreateItinerary> {
       ),
       body: Column(
         children: [
-          Positioned(
-            left: 20,
-            right: 20,
-            child: GestureDetector(
-              onTap: _openSearchScreen, // Navigate to the search screen
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.6,
-                height: 30,
-                //padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.search),
-                    Expanded(
-                      child: Text(
-                        _selectedDestination != null
-                            ? _selectedDestination![
-                                'name'] // Show selected destination
-                            : 'Search Destinations', // Placeholder text
-                        style: TextStyle(color: Colors.black54),
-                        overflow: TextOverflow
-                            .ellipsis, // Truncate text if it's too long
-                      ),
-                    ),
-                    if (_selectedDestination !=
-                        null) // Show clear button only when needed
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedDestination = null; // Clear searchbar
-                            // _selectedType = 'All';
-                          });
-                        },
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.black54,
-                          size: 20,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
           Stack(
             children: [
               Center(
@@ -556,42 +399,90 @@ class _CreateItineraryState extends State<CreateItinerary> {
                   ),
                 ),
               ),
-
-              // Display the filtered search results below the search bar
-
-              if (_locationTypes.isNotEmpty)
-                Positioned(
-                  top: 60,
-                  right: 60,
-                  child: Container(
-                    padding: EdgeInsets.only(left: 10, right: 10),
-                    margin: EdgeInsets.only(left: 260),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFA52424),
-                      // border: Border.all(color: Colors.black, width: 2.0),
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: DropdownButton<String>(
-                      style: TextStyle(color: Colors.white),
-                      value: _selectedType,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedType = newValue!;
-                        });
-                        _onFilterChanged(newValue); // Your filtering logic
-                      },
-                      items: _locationTypes
-                          .map<DropdownMenuItem<String>>((String type) {
-                        return DropdownMenuItem<String>(
-                          value: type,
-                          child: Text(type), // Display the type name
-                        );
-                      }).toList(),
-                      dropdownColor: Color(0xFFA52424),
-                      underline: SizedBox.shrink(),
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 25),
+                  child: GestureDetector(
+                    onTap: _openSearchScreen, // Navigate to the search screen
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.78,
+                      height: 40,
+                      //padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search),
+                          Expanded(
+                            child: Text(
+                              _selectedDestination != null
+                                  ? _selectedDestination![
+                                      'name'] // Show selected destination
+                                  : 'Search Destinations', // Placeholder text
+                              style: TextStyle(color: Colors.black54),
+                              overflow: TextOverflow
+                                  .ellipsis, // Truncate text if it's too long
+                            ),
+                          ),
+                          if (_selectedDestination !=
+                              null) // Show clear button only when needed
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedDestination =
+                                      null; // Clear searchbar
+                                  // _selectedType = 'All';
+                                });
+                              },
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.black54,
+                                size: 20,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              ),
+              //buttons for filtering
+              Padding(
+                padding: const EdgeInsets.only(top: 65),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: activityTypes.map((type) {
+                      final isSelected = selectedTypes.contains(type);
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                isSelected ? Color(0xFFA52424) : Colors.white,
+                            foregroundColor:
+                                isSelected ? Colors.white : Color(0xFFA52424),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              if (isSelected) {
+                                selectedTypes.remove(type);
+                              } else {
+                                selectedTypes.add(type);
+                              }
+                            });
+                            _fetchDestinations(showAll: selectedTypes.isEmpty);
+                          },
+                          child: Text(type),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              )
             ],
           ),
           SizedBox(height: 10),
@@ -605,6 +496,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
             ),
             child: _buildDestinationDetails(),
           ),
+
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -654,10 +546,12 @@ class _CreateItineraryState extends State<CreateItinerary> {
   }
 }
 
+//Search Screen
 class SearchScreen extends StatefulWidget {
   final String? initialQuery;
 
   const SearchScreen({super.key, this.initialQuery});
+
   @override
   _SearchScreenState createState() => _SearchScreenState();
 }
@@ -665,65 +559,72 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _filteredDestinations = [];
+  Timer? _debounce;
+
+//update query for case insensitive searching (kahit lowercase may lalabas pa rin)
+  void updateDocuments() async {
+    var snapshot =
+        await FirebaseFirestore.instance.collection('test_destinations').get();
+
+    for (var doc in snapshot.docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      await doc.reference.update({'nameLower': data['name'].toLowerCase()});
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-
-    // Set the search bar text to the initial query if provided
+    updateDocuments();
     if (widget.initialQuery != null) {
       _searchController.text = widget.initialQuery!;
       _searchDestinations(widget.initialQuery!);
     }
-
-    _searchController.addListener(_filterDestinations);
   }
 
-  // Search Firestore for destinations matching the query
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _searchDestinations(_searchController.text);
+    });
+  }
+
   void _searchDestinations(String query) async {
-    if (query.isEmpty) {
+    if (query.trim().isEmpty) {
       setState(() {
-        _filteredDestinations = [];
+        _filteredDestinations.clear();
       });
       return;
     }
 
-    // Query Firestore collection 'Destinations' for documents with name matching the query
-    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-        .collection('test_destinations')
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThan: '${query}z')
-        .get();
+    try {
+      var querySnapshot = await FirebaseFirestore.instance
+          .collection('test_destinations')
+          .where('nameLower', isGreaterThanOrEqualTo: query.toLowerCase())
+          .where('nameLower',
+              isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff')
+          .get();
 
-    List<Map<String, dynamic>> destinations = [];
-    for (var doc in querySnapshot.docs) {
-      destinations.add(doc.data() as Map<String, dynamic>);
+      List<Map<String, dynamic>> destinations = querySnapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+
+      setState(() {
+        _filteredDestinations = destinations;
+      });
+    } catch (e) {
+      debugPrint('Error fetching destinations: $e');
     }
-
-    setState(() {
-      _filteredDestinations = destinations;
-    });
-  }
-
-  void _filterDestinations() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredDestinations = _filteredDestinations.where((destination) {
-        return destination['name'].toLowerCase().contains(query);
-      }).toList();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Search Destinations'),
+        title: const Text('Search Destinations'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context); // Navigate back to the previous screen
-          },
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Column(
@@ -734,29 +635,33 @@ class _SearchScreenState extends State<SearchScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 labelText: 'Search Destinations',
-                suffixIcon: Icon(Icons.search),
+                suffixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              onChanged: _searchDestinations,
+              onChanged: (_) => _onSearchChanged(),
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: _filteredDestinations.length,
-              itemBuilder: (context, index) {
-                var destination = _filteredDestinations[index];
-                return ListTile(
-                  title: Text(destination['name']),
-                  subtitle: Text(
-                      '${destination['latitude']}, ${destination['longitude']}'), //details shown along with the
-                  onTap: () {
-                    // Handle tapping a destination (select or show details)
-
-                    Navigator.pop(
-                        context, destination); // Pass selected destination back
-                  },
-                );
-              },
-            ),
+            child: _filteredDestinations.isEmpty
+                ? const Center(
+                    child: Text('No destinations found'),
+                  )
+                : ListView.builder(
+                    itemCount: _filteredDestinations.length,
+                    itemBuilder: (context, index) {
+                      var destination = _filteredDestinations[index];
+                      return ListTile(
+                        title: Text(destination['name']),
+                        subtitle: Text(
+                            '${destination['latitude']}, ${destination['longitude']}'),
+                        onTap: () {
+                          Navigator.pop(context, destination);
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -765,6 +670,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
