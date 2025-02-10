@@ -171,8 +171,6 @@ class _CreateItineraryState extends State<CreateItinerary> {
     );
   }
 
-//new filter button for testing
-
 //kunyare lang to
   Future<void> _getUserLocation() async {
     try {
@@ -180,17 +178,6 @@ class _CreateItineraryState extends State<CreateItinerary> {
       setState(() {
         userLocation = LatLng(
             14.499111632246139, 121.18714131749572); // Example coordinates
-
-        // Add marker for user's location
-        // markers.add(
-        //   Marker(
-        //     markerId: MarkerId("user_location"),
-        //     position: userLocation!,
-        //     infoWindow: InfoWindow(title: "Your Location"),
-        //     icon: BitmapDescriptor.defaultMarkerWithHue(
-        //         BitmapDescriptor.hueBlue), // Custom marker color
-        //   ),
-        // );
       });
 
       // Move the camera to the user's location (ensure it's not null)
