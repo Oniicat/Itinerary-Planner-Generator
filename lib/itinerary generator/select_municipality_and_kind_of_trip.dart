@@ -5,6 +5,7 @@ import 'package:firestore_basics/Ui/forward_button_red.dart';
 import 'package:firestore_basics/Ui/top_icon.dart';
 import 'package:firestore_basics/itinerary%20generator/select_activity_and_set_budget.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 class SelectMunicipality extends StatefulWidget {
   const SelectMunicipality({super.key});
@@ -27,6 +28,34 @@ class _SelectMunicipalityState extends State<SelectMunicipality> {
         selectedMunicipalities.add(municipality); // Add if not selected
       }
     });
+  }
+
+//permission for accessing gps
+  Future<Position> getCurrentPosition() async {
+    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceEnabled) {
+      throw Exception("Location services are disabled. Please enable them.");
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception("Location permissions are denied.");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception("Location permissions are permanently denied.");
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getCurrentPosition();
   }
 
   @override
@@ -170,11 +199,11 @@ class _SelectMunicipalityState extends State<SelectMunicipality> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     MunicipalityButton(
-                                      text: 'Montalban',
+                                      text: 'Rodriguez',
                                       isSelected: selectedMunicipalities
-                                          .contains('Montalban'),
+                                          .contains('Rodriguez'),
                                       onTap: () =>
-                                          toggleMunicipality('Montalban'),
+                                          toggleMunicipality('Rodriguez'),
                                     ),
                                     SizedBox(
                                       width: 10,

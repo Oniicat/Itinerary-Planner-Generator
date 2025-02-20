@@ -147,6 +147,7 @@ class _TripSummaryGeneratorState extends State<TripSummaryGenerator> {
   Future<void> saveItinerary() async {
     final itineraryData = {
       'itineraryName': itineraryName,
+      'status': 'upcoming',
       'travelerName': 'Baymax',
       'numberOfDays': numberOfDays,
       'createdAt': FieldValue.serverTimestamp(),

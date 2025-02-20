@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_basics/itinerary%20Planner/cart.dart';
@@ -70,6 +71,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
     _getUserLocation();
     _loadActivityTypes();
     _fetchDestinations();
+    getCurrentPosition();
   }
 
   //function ng add to cart
@@ -144,6 +146,28 @@ class _CreateItineraryState extends State<CreateItinerary> {
         _focusOnDestination(selectedDestination);
       });
     }
+  }
+
+//permission for accessing gps
+  Future<Position> getCurrentPosition() async {
+    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceEnabled) {
+      throw Exception("Location services are disabled. Please enable them.");
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception("Location permissions are denied.");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception("Location permissions are permanently denied.");
+    }
+
+    return await Geolocator.getCurrentPosition();
   }
 
   // Focus the map on the selected destination
