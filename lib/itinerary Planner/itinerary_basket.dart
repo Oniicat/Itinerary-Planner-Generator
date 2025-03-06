@@ -1,5 +1,7 @@
+import 'package:firestore_basics/Ui/top_icon.dart';
+import 'package:firestore_basics/Ui/white_buttons.dart';
 import 'package:flutter/material.dart';
-import 'package:firestore_basics/itinerary%20Planner/showitinerary.dart';
+import 'package:firestore_basics/itinerary%20Planner/plan_itinerary.dart';
 
 class CartScreen extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
@@ -45,10 +47,28 @@ class CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false, // Removes the default back button
+        actions: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    right: 16), // Adjust the padding as needed
+                child: Closedbutton(),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 320),
+            child: Text(
+              '2 of 3',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
           Center(
             child: Text(
               'Itinerary Basket',
@@ -58,7 +78,7 @@ class CartScreenState extends State<CartScreen> {
           SizedBox(height: 10),
           Expanded(
             child: widget.cartItems.isEmpty
-                ? Center(child: Text("No items in the cart"))
+                ? Center(child: Text("No destinations added yet"))
                 : ReorderableListView.builder(
                     itemCount: widget.cartItems.length,
                     onReorder: _reorderItems,
@@ -71,8 +91,7 @@ class CartScreenState extends State<CartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(item['address'] ?? "No address provided"),
-                            Text("Latitude: ${item['latitude']}"),
-                            Text("Longitude: ${item['longitude']}"),
+                            Text("Pricing: ${item['pricing']}")
                           ],
                         ),
                         trailing: IconButton(
@@ -86,35 +105,41 @@ class CartScreenState extends State<CartScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_circle_left,
-                  size: 50,
-                  color: Color(0xFFA52424),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: BackButtonWhite(),
               ),
               SizedBox(width: 20),
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_circle_right,
-                  size: 50,
-                  color: Color(0xFFA52424),
+              Padding(
+                padding: const EdgeInsets.only(right: 20),
+                child: NextButtonWhite(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            Mapwithitems(cartItems: widget.cartItems),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(1.0, 0.0); // Start from right
+                          const end = Offset.zero; // End at original position
+                          const curve = Curves.easeInOut;
+                          var tween = Tween(begin: begin, end: end)
+                              .chain(CurveTween(curve: curve));
+                          var offsetAnimation = animation.drive(tween);
+                          return SlideTransition(
+                            position: offsetAnimation,
+                            child: child,
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          Mapwithitems(cartItems: widget.cartItems),
-                    ),
-                  );
-                },
               ),
             ],
           ),
+          SizedBox(height: 20),
         ],
       ),
     );

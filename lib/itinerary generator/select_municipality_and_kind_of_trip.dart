@@ -3,8 +3,10 @@ import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/Ui/button_red.dart';
 import 'package:firestore_basics/Ui/forward_button_red.dart';
 import 'package:firestore_basics/Ui/top_icon.dart';
+import 'package:firestore_basics/Ui/white_buttons.dart';
 import 'package:firestore_basics/itinerary%20generator/select_activity_and_set_budget.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 class SelectMunicipality extends StatefulWidget {
   const SelectMunicipality({super.key});
@@ -29,19 +31,61 @@ class _SelectMunicipalityState extends State<SelectMunicipality> {
     });
   }
 
+//permission for accessing gps
+  Future<Position> getCurrentPosition() async {
+    bool isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceEnabled) {
+      throw Exception("Location services are disabled. Please enable them.");
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception("Location permissions are denied.");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception("Location permissions are permanently denied.");
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getCurrentPosition();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(10.0), // Set the height here
-        child: AppBar(
-          automaticallyImplyLeading: false,
-        ),
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the default back button
+        actions: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    right: 16), // Adjust the padding as needed
+                child: Closedbutton(),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            TopIcon(text: '1 of 6'),
+            Padding(
+              padding: const EdgeInsets.only(right: 320),
+              child: Text(
+                '1 of 6',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
             SizedBox(
               height: 20,
             ),
@@ -170,11 +214,11 @@ class _SelectMunicipalityState extends State<SelectMunicipality> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     MunicipalityButton(
-                                      text: 'Montalban',
+                                      text: 'Rodriguez',
                                       isSelected: selectedMunicipalities
-                                          .contains('Montalban'),
+                                          .contains('Rodriguez'),
                                       onTap: () =>
-                                          toggleMunicipality('Montalban'),
+                                          toggleMunicipality('Rodriguez'),
                                     ),
                                     SizedBox(
                                       width: 10,
@@ -239,7 +283,7 @@ class _SelectMunicipalityState extends State<SelectMunicipality> {
                         ),
                       ),
                       SizedBox(
-                        height: 30,
+                        height: 100,
                       ),
                       Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -247,15 +291,34 @@ class _SelectMunicipalityState extends State<SelectMunicipality> {
                           children: [
                             Container(
                               padding: const EdgeInsets.only(right: 50),
-                              child: ForwardButtonRed(
+                              child: NextButtonWhite(
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (context) => Kindoftrip(
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation,
+                                              secondaryAnimation) =>
+                                          Kindoftrip(
                                         selectedMunicipalities:
                                             selectedMunicipalities,
                                       ),
+                                      transitionsBuilder: (context, animation,
+                                          secondaryAnimation, child) {
+                                        const begin = Offset(
+                                            1.0, 0.0); // Start from right
+                                        const end = Offset
+                                            .zero; // End at original position
+                                        const curve = Curves.easeInOut;
+                                        var tween = Tween(
+                                                begin: begin, end: end)
+                                            .chain(CurveTween(curve: curve));
+                                        var offsetAnimation =
+                                            animation.drive(tween);
+                                        return SlideTransition(
+                                          position: offsetAnimation,
+                                          child: child,
+                                        );
+                                      },
                                     ),
                                   );
                                 },
@@ -350,7 +413,7 @@ class _KindoftripState extends State<Kindoftrip> {
       } else {
         numberOfTravelersController.text =
             ''; // Clear the field for other types
-        numberOfTravelers = 3;
+        numberOfTravelers = 0;
       }
     });
   }
@@ -369,11 +432,11 @@ class _KindoftripState extends State<Kindoftrip> {
       }
     } else {
       int? input = int.tryParse(text);
-      if (input != null && input < 3) {
-        numberOfTravelersController.text = '3'; // Lock to 3 if it's less than 3
+      if (input != null) {
+        numberOfTravelersController.text = '0'; // Lock to 3 if it's less than 3
         numberOfTravelers = 3;
       } else {
-        numberOfTravelers = input ?? 3;
+        numberOfTravelers = input ?? 0;
       }
     }
   }
@@ -387,18 +450,32 @@ class _KindoftripState extends State<Kindoftrip> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(10.0), // Set the height here
-        child: AppBar(
-          automaticallyImplyLeading: false,
-        ),
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the default back button
+        actions: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    right: 16), // Adjust the padding as needed
+                child: Closedbutton(),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TopIcon(text: '2 of 6'),
+            Padding(
+              padding: const EdgeInsets.only(left: 30),
+              child: Text(
+                '2 of 6',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
             SizedBox(height: 50),
             Container(
               padding: const EdgeInsets.only(left: 40),
@@ -483,14 +560,15 @@ class _KindoftripState extends State<Kindoftrip> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                BackButtonRed(
+                BackButtonWhite(
                   onPressed: () {
                     Navigator.pop(context);
                   },
                 ),
                 SizedBox(width: MediaQuery.of(context).size.width * 0.6),
-                ForwardButtonRed(
+                NextButtonWhite(
                   onPressed: () {
+                    print('$numberOfTravelers');
                     if (numberOfTravelers < 3 &&
                         selectedTripType != 'Solo' &&
                         selectedTripType != 'Partner') {
@@ -511,15 +589,49 @@ class _KindoftripState extends State<Kindoftrip> {
                           );
                         },
                       );
+                    } else if (numberOfTravelers == 0 &&
+                        selectedTripType != 'Family') {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            content: Text(
+                                'The number of travelers does not match the selected trip type. Please select a valid number of travelers.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text('OK'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     } else {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => SelectActivity(
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  SelectActivity(
                             selectedMunicipalities: selectedMunicipalities,
                             selectedTripType: selectedTripType,
                             numberOfTravelers: numberOfTravelers,
                           ),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(1.0, 0.0); // Start from right
+                            const end = Offset.zero; // End at original position
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end)
+                                .chain(CurveTween(curve: curve));
+                            var offsetAnimation = animation.drive(tween);
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            );
+                          },
                         ),
                       );
                     }

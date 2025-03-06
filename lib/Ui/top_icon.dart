@@ -21,16 +21,6 @@ class TopIcon extends StatelessWidget {
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
           ),
           SizedBox(
-            width: 70,
-          ),
-          Center(
-            child: Image.asset(
-              'assets/LOGO.png',
-              width: 100,
-              height: 100,
-            ),
-          ),
-          SizedBox(
             width: 60,
           ),
           GestureDetector(
@@ -66,6 +56,20 @@ class TopIcon extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class NumText extends StatelessWidget {
+  final String text; // New customizable text property
+
+  const NumText({Key? key, this.text = '1 of 6'}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
     );
   }
 }

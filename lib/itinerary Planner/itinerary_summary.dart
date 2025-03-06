@@ -1,33 +1,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/Ui/navbar.dart';
+import 'package:firestore_basics/Ui/top_icon.dart';
 import 'package:firestore_basics/Ui/white_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class TripSummaryGenerator extends StatefulWidget {
+class TripSummary extends StatefulWidget {
   final String itineraryName;
   final int numberOfDays;
-  final String? selectedTripType;
   final Map<int, List<Map<String, dynamic>>> dailyDestinations;
-  const TripSummaryGenerator(
-      {super.key,
-      required this.itineraryName,
-      required this.numberOfDays,
-      required this.dailyDestinations,
-      required this.selectedTripType});
+  const TripSummary({
+    super.key,
+    required this.itineraryName,
+    required this.numberOfDays,
+    required this.dailyDestinations,
+  });
 
   @override
-  State<TripSummaryGenerator> createState() => _TripSummaryGeneratorState();
+  State<TripSummary> createState() => _TripSummaryState();
 }
 
-class _TripSummaryGeneratorState extends State<TripSummaryGenerator> {
+class _TripSummaryState extends State<TripSummary> {
   Set<Marker> markers = {};
   int numberOfDays = 0; // Total days
   int selectedDay = 0;
   Map<int, List<Map<String, dynamic>>> dailyDestinations = {};
   String itineraryName = '';
-  String? selectedTripType;
   Widget showDayDetails(int day) {
     List<Map<String, dynamic>> destinations = dailyDestinations[day]!;
 
@@ -195,7 +194,6 @@ class _TripSummaryGeneratorState extends State<TripSummaryGenerator> {
     numberOfDays = widget.numberOfDays;
     dailyDestinations = widget.dailyDestinations;
     itineraryName = widget.itineraryName;
-    selectedTripType = widget.selectedTripType;
   }
 
   @override
@@ -225,23 +223,24 @@ class _TripSummaryGeneratorState extends State<TripSummaryGenerator> {
               Center(
                 child: Column(
                   children: [
-                    SizedBox(height: 25),
+                    SizedBox(height: 20),
                     Container(
                       height: MediaQuery.of(context).size.height * 0.7,
                       width: MediaQuery.of(context).size.width * 0.9,
                       decoration: BoxDecoration(
+                        color: Colors.white,
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.all(Radius.circular(10)),
                       ),
                       child: Column(
                         children: [
-                          SizedBox(height: 15),
+                          SizedBox(height: 20),
                           Text(
                             'Trip Summary',
                             style: TextStyle(
                                 fontSize: 25, fontWeight: FontWeight.bold),
                           ),
-                          SizedBox(height: 20),
+                          SizedBox(height: 10),
                           Row(
                             children: [
                               SizedBox(width: 25),

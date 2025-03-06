@@ -14,6 +14,332 @@ class ItineraryListScreen extends StatefulWidget {
 }
 
 class _ItineraryListScreenState extends State<ItineraryListScreen> {
+  String selectedMainButton = 'Itinerary'; // Default selection
+  String selectedSubButton = 'Upcoming'; // Default sub-selection
+
+  // Helper to check button state
+  bool isSelected(String buttonLabel) => selectedMainButton == buttonLabel;
+
+  bool isSubSelected(String buttonLabel) => selectedSubButton == buttonLabel;
+
+//button builder
+  Widget mainButton(String label) {
+    return Padding(
+      padding: const EdgeInsets.all(15),
+      child: ElevatedButton(
+        onPressed: () {
+          setState(() {
+            selectedMainButton = label;
+            selectedSubButton = 'Upcoming'; // Reset sub-selection
+          });
+        },
+        style: ElevatedButton.styleFrom(
+          minimumSize: Size(150, 50),
+          backgroundColor: isSelected(label) ? Color(0xFFA52424) : Colors.white,
+          foregroundColor: isSelected(label) ? Colors.white : Color(0xFFA52424),
+          side: BorderSide(color: Color(0xFFA52424), width: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(5)),
+          ),
+        ),
+        child: Text(label),
+      ),
+    );
+  }
+
+  Widget subButton(String label) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: ElevatedButton(
+        onPressed: () {
+          setState(() {
+            selectedSubButton = label;
+          });
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isSubSelected(label) ? Color(0xFFA52424) : Color(0xFFeaeaea),
+          foregroundColor:
+              isSubSelected(label) ? Colors.white : Color(0xFFA52424),
+        ),
+        child: Text(label),
+      ),
+    );
+  }
+
+  // Content for Itinerary Section
+  Widget itineraryContent(String subButton) {
+    switch (subButton) {
+      case 'Upcoming':
+        return Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('Itineraries')
+              .where('status', isEqualTo: 'upcoming')
+              .orderBy('createdAt',
+                  descending: true) // Sort from newest to oldest
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return Center(child: Text('No itineraries found.'));
+            }
+
+            final itineraries = snapshot.data!.docs;
+
+            return ListView.builder(
+              itemCount: itineraries.length,
+              itemBuilder: (context, index) {
+                final itinerary = itineraries[index];
+                final itineraryName =
+                    itinerary['itineraryName'] ?? 'Unnamed Trip';
+                final numberOfDays = itinerary['numberOfDays'] ?? 0;
+                final createdAt = itinerary['createdAt'] != null
+                    ? (itinerary['createdAt'] as Timestamp).toDate().toString()
+                    : 'Unknown Date';
+
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          title: Text(
+                            itineraryName,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 20),
+                          ),
+                          subtitle: Text(
+                            DateFormat('MMMM d, y')
+                                .format(DateTime.parse(createdAt)),
+                          ),
+                          onTap: () {
+                            String selectedDay = "Day ${index + 1}";
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TripDetails(
+                                  itineraryName: itineraryName,
+                                  selectedDay: selectedDay,
+                                  numberOfDays: numberOfDays,
+                                  dailyDestinations:
+                                      _mapFirestoreData(itinerary['days']),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton(
+                            style: ButtonStyle(
+                              backgroundColor:
+                                  WidgetStateProperty.all(Color(0xFFA52424)),
+                              foregroundColor:
+                                  WidgetStateProperty.all(Colors.white),
+                            ),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  content:
+                                      Text('Complete this itinerary trip?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () async {
+                                        try {
+                                          // Update the status of the itinerary to 'completed'
+                                          await FirebaseFirestore.instance
+                                              .collection('Itineraries')
+                                              .doc(itinerary
+                                                  .id) // Use the itinerary document ID
+                                              .update({'status': 'completed'});
+                                          Navigator.pop(
+                                              context); // Close the dialog
+                                          ScaffoldMessenger.of(context);
+
+                                          showDialog(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                    content: Text(
+                                                        'Itinerary trip completed'),
+                                                    actions: [
+                                                      TextButton(
+                                                          onPressed: () {
+                                                            Navigator.pop(
+                                                                context);
+                                                          },
+                                                          child: Text('Ok'))
+                                                    ],
+                                                  ));
+                                        } catch (e) {
+                                          print(
+                                              "Error updating itinerary status: $e");
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    'Failed to complete itinerary.')),
+                                          );
+                                        }
+                                      },
+                                      child: Text('Agree'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text('Cancel'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Done',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ));
+      case 'Completed':
+        return Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('Itineraries')
+              .where('status', isEqualTo: 'completed')
+              .orderBy('createdAt',
+                  descending: true) // Sort from newest to oldest
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return Center(child: Text('No itineraries found.'));
+            }
+
+            final itineraries = snapshot.data!.docs;
+
+            return ListView.builder(
+              itemCount: itineraries.length,
+              itemBuilder: (context, index) {
+                final itinerary = itineraries[index];
+                final itineraryName =
+                    itinerary['itineraryName'] ?? 'Unnamed Trip';
+                final numberOfDays = itinerary['numberOfDays'] ?? 0;
+                final createdAt = itinerary['createdAt'] != null
+                    ? (itinerary['createdAt'] as Timestamp).toDate().toString()
+                    : 'Unknown Date';
+
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          title: Text(
+                            itineraryName,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 20),
+                          ),
+                          subtitle: Text(
+                            DateFormat('MMMM d, y')
+                                .format(DateTime.parse(createdAt)),
+                          ),
+                          onTap: () {
+                            String selectedDay = "Day ${index + 1}";
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TripDetails(
+                                  itineraryName: itineraryName,
+                                  selectedDay: selectedDay,
+                                  numberOfDays: numberOfDays,
+                                  dailyDestinations:
+                                      _mapFirestoreData(itinerary['days']),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton(
+                            style: ButtonStyle(
+                              backgroundColor:
+                                  WidgetStateProperty.all(Color(0xFFeaeaea)),
+                              foregroundColor:
+                                  WidgetStateProperty.all(Color(0xFFA52424)),
+                            ),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  content: Text(
+                                      'Teka lang boss wala pa akong function'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text('Oumki'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Archive',
+                              style: TextStyle(color: Color(0xFFA52424)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ));
+      case 'Archive':
+        return Text('Itinerary: Archived Trips',
+            style: TextStyle(fontSize: 18));
+      default:
+        return SizedBox.shrink();
+    }
+  }
+
+  // Content for Booking Section
+  Widget bookingContent(String subButton) {
+    switch (subButton) {
+      case 'Upcoming':
+        return Text('empty', style: TextStyle(fontSize: 18));
+      case 'Completed':
+        return Text('empty', style: TextStyle(fontSize: 18));
+      case 'Archive':
+        return Text('empty', style: TextStyle(fontSize: 18));
+      default:
+        return SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,142 +358,29 @@ class _ItineraryListScreenState extends State<ItineraryListScreen> {
         children: [
           Text(
             'History',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
           ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [mainButton('Itinerary'), mainButton('Booking')],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              subButton('Upcoming'),
+              subButton('Completed'),
+              subButton('Archive'),
+            ],
+          ),
+          if (selectedMainButton == 'Itinerary')
+            itineraryContent(selectedSubButton)
+          else
+            bookingContent(selectedSubButton),
           SizedBox(height: 30),
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Row(
-              //   children: [
-              //     ElevatedButton(
-              //         onPressed: () {},
-              //         style: ElevatedButton.styleFrom(
-              //           shape: RoundedRectangleBorder(
-              //             borderRadius: BorderRadius
-              //                 .zero, // This removes the border radius to make it a box shape
-              //           ),
-              //         ),
-              //         child: Text('Itinerary')),
-              //     ElevatedButton(
-              //         onPressed: () {},
-              //         style: ElevatedButton.styleFrom(
-              //           shape: RoundedRectangleBorder(
-              //             borderRadius: BorderRadius
-              //                 .zero, // This removes the border radius to make it a box shape
-              //           ),
-              //         ),
-              //         child: Text('Booking'))
-              //   ],
-              // ),
-            ],
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('Itineraries')
-                  .orderBy('createdAt',
-                      descending: true) // Sort from newest to oldest
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('No itineraries found.'));
-                }
-
-                final itineraries = snapshot.data!.docs;
-
-                return ListView.builder(
-                  itemCount: itineraries.length,
-                  itemBuilder: (context, index) {
-                    final itinerary = itineraries[index];
-                    final itineraryName =
-                        itinerary['itineraryName'] ?? 'Unnamed Trip';
-                    final numberOfDays = itinerary['numberOfDays'] ?? 0;
-                    final createdAt = itinerary['createdAt'] != null
-                        ? (itinerary['createdAt'] as Timestamp)
-                            .toDate()
-                            .toString()
-                        : 'Unknown Date';
-
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ListTile(
-                              title: Text(
-                                itineraryName,
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 20),
-                              ),
-                              subtitle: Text(
-                                DateFormat('MMMM d, y')
-                                    .format(DateTime.parse(createdAt)),
-                              ),
-                              onTap: () {
-                                String selectedDay =
-                                    "Day ${index + 1}"; // Example selected day logic
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => TripDetails(
-                                      itineraryName: itineraryName,
-                                      selectedDay: selectedDay,
-                                      numberOfDays: numberOfDays,
-                                      dailyDestinations:
-                                          _mapFirestoreData(itinerary['days']),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            // Align(
-                            //   alignment: Alignment.centerRight,
-                            //   child: ElevatedButton(
-                            //     style: ButtonStyle(
-                            //       backgroundColor: WidgetStateProperty.all(
-                            //           Color(0xFFA52424)),
-                            //       foregroundColor:
-                            //           WidgetStateProperty.all(Colors.white),
-                            //     ),
-                            //     onPressed: () {
-                            //       showDialog(
-                            //         context: context,
-                            //         builder: (context) => AlertDialog(
-                            //           content: Text(
-                            //               'Teka lang boss wala pa akong function'),
-                            //           actions: [
-                            //             TextButton(
-                            //               onPressed: () {
-                            //                 Navigator.pop(context);
-                            //               },
-                            //               child: Text('Oumki'),
-                            //             ),
-                            //           ],
-                            //         ),
-                            //       );
-                            //     },
-                            //     child: Text(
-                            //       'Done',
-                            //       style: TextStyle(color: Colors.white),
-                            //     ),
-                            //   ),
-                            // ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+            children: [],
           ),
         ],
       ),
@@ -258,15 +471,6 @@ class _TripDetailsState extends State<TripDetails> {
                   child: ListTile(
                     title: Text(destination['name']),
                     subtitle: Text(destination['address']),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () {
-                        setState(() {
-                          destinations.removeAt(index);
-                          dailyDestinations[day] = destinations;
-                        });
-                      },
-                    ),
                   ),
                 );
               }),

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 //Common Textfield Design
-class MyTextField extends StatelessWidget {
+class NumberTextfield extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final bool obscureText;
   final TextInputType keyboardType;
-  const MyTextField(
+  const NumberTextfield(
       {super.key,
       required this.controller,
       required this.hintText,

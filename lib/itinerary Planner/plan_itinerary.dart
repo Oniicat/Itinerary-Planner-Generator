@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:firestore_basics/Directions/directions_repository.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
-import 'package:firestore_basics/itinerary%20Planner/tripsummary.dart';
+import 'package:firestore_basics/Ui/top_icon.dart';
+import 'package:firestore_basics/Ui/white_buttons.dart';
+import 'package:firestore_basics/itinerary%20Planner/itinerary_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -48,18 +50,31 @@ class _MapwithitemsState extends State<Mapwithitems> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         DropdownButton<int>(
-          value: (numberOfDays >= 1 && numberOfDays <= 7) ? numberOfDays : 1,
-          items: List.generate(7, (index) => index + 1)
-              .map((day) => DropdownMenuItem(
-                    value: day,
-                    child: Text('$day'),
-                  ))
-              .toList(),
+          value: (numberOfDays >= 1 && numberOfDays <= 7) ? numberOfDays : 0,
+          items: [
+            DropdownMenuItem(
+              value: 0, // UI only
+              child: Text(
+                '0',
+                style: TextStyle(color: Color(0xFFA52424)),
+              ),
+            ),
+            ...List.generate(7, (index) => index + 1)
+                .map((day) => DropdownMenuItem(
+                      value: day,
+                      child: Text(
+                        '$day',
+                        style: TextStyle(color: Color(0xFFA52424)),
+                      ),
+                    ))
+                .toList(),
+          ],
           onChanged: (value) {
-            if (value != null) {
+            if (value != null && value != 0) {
+              // Ignore "0" in logic
               setState(() {
-                numberOfDays = value; // Update the number of days
-                dailyDestinations.clear(); // Clear and reset destinations
+                numberOfDays = value;
+                dailyDestinations.clear();
                 for (int i = 1; i <= numberOfDays; i++) {
                   dailyDestinations[i] = [];
                 }
@@ -270,7 +285,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
         ));
       }
 
-      _generateRoute();
+      //_generateRoute();
       fetchAndShowCurrentLocation();
       startLocationStream();
     });
@@ -363,7 +378,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 BitmapDescriptor.hueOrange),
           ),
         );
-        _generateRoute();
+        //_generateRoute();
       });
     });
 
@@ -415,7 +430,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 BitmapDescriptor.hueOrange),
           ),
         );
-        _generateRoute();
+        // _generateRoute();
       });
 
       mapController?.animateCamera(
@@ -456,7 +471,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
         );
       });
       // Update the route and camera position:
-      _generateRoute();
+      // _generateRoute();
       mapController?.animateCamera(CameraUpdate.newLatLng(userLocation));
     });
   }
@@ -564,6 +579,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
     }
   }
 
+//camera position sa map
   Future<void> _getUserLocation() async {
     //Position position = await getCurrentPosition();
     try {
@@ -633,11 +649,34 @@ class _MapwithitemsState extends State<Mapwithitems> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+
+        // Left-side button
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: BackButtonWhite(),
+        ),
+
+        // Right-side button
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Closedbutton(),
+          ),
+        ],
+      ),
       // resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
           children: [
-            Positioned(top: 65, left: 65, child: _showdistanddur()),
+            Padding(
+              padding: const EdgeInsets.only(left: 20, top: 15),
+              child: Text(
+                '3 of 3',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
             // Google Map
             Center(
               child: Container(
@@ -659,12 +698,11 @@ class _MapwithitemsState extends State<Mapwithitems> {
             ),
             // Back Button
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                BackButtonRed(),
-                Spacer(),
                 Container(
-                  alignment: Alignment.topRight,
+                  alignment: Alignment.topLeft,
                   padding: EdgeInsets.only(right: 20),
                   child: ElevatedButton(
                       onPressed: () {
@@ -675,6 +713,25 @@ class _MapwithitemsState extends State<Mapwithitems> {
                             builder: (context) {
                               return AlertDialog(
                                 content: Text('Please name your trip'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text('OK'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          return;
+                        }
+                        if (numberOfDays == 0) {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                content: Text('Please set up number of days'),
                                 actions: [
                                   TextButton(
                                     onPressed: () {
@@ -732,6 +789,12 @@ class _MapwithitemsState extends State<Mapwithitems> {
                 ),
               ],
             ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 600), // Adjust as needed
+                child: _showdistanddur(),
+              ),
+            ),
 
             // Draggable Scrollable Sheet
             DraggableScrollableSheet(
@@ -770,6 +833,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                           controller: scrollController,
                           child: Column(
                             children: [
+                              SizedBox(height: 10),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -779,12 +843,15 @@ class _MapwithitemsState extends State<Mapwithitems> {
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold),
                                   ),
-                                  SizedBox(width: 20),
+                                  SizedBox(width: 30),
                                   Row(
                                     children: [
                                       Text(
                                         'How many days:',
-                                        style: TextStyle(fontSize: 15),
+                                        style: TextStyle(
+                                            fontSize: 15,
+                                            color: Color(0xFFA52424),
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       SizedBox(width: 8),
                                       _buildDayDropdown(),
@@ -799,7 +866,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                                 child: TextField(
                                   controller: itineraryNameController,
                                   decoration: InputDecoration(
-                                    hintText: 'Name your trip',
+                                    hintText: 'Enter name of trip',
                                     border: OutlineInputBorder(),
                                   ),
                                 ),
@@ -809,7 +876,7 @@ class _MapwithitemsState extends State<Mapwithitems> {
                               if (selectedDay > 0)
                                 Container(
                                   height:
-                                      MediaQuery.of(context).size.height * 0.5,
+                                      MediaQuery.of(context).size.height * 0.3,
                                   width:
                                       MediaQuery.of(context).size.width * 0.8,
                                   decoration: BoxDecoration(
@@ -832,137 +899,3 @@ class _MapwithitemsState extends State<Mapwithitems> {
     );
   }
 }
-
-
-
-//////////////////////////////////unused codes///////////////////////////////////
-//destination info when a marker is clicked
-  // Widget _buildDestinationDetails() {
-  //   if (_selectedDestination == null) {
-  //     return Center(child: Text('Tap on a destination to see details'));
-  //   }
-
-  //   return Padding(
-  //     padding: const EdgeInsets.all(16.0),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Text(
-  //           _selectedDestination!['name'] ?? '',
-  //           style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-  //         ),
-  //         SizedBox(height: 5),
-  //         Text(
-  //           "Address: ${_selectedDestination!['address'] ?? ''}",
-  //           style: TextStyle(fontSize: 13),
-  //         ),
-  //         SizedBox(height: 5),
-  //         Text(
-  //           "Description: ${_selectedDestination!['description'] ?? ''}",
-  //           style: TextStyle(fontSize: 13),
-  //         ),
-  //         SizedBox(height: 5),
-  //         Text(
-  //           "Contact: ${_selectedDestination!['contact'] ?? ''}",
-  //           style: TextStyle(fontSize: 13),
-  //         ),
-  //         // ElevatedButton(onPressed:() {
-  //         //   removeMarker(position);
-  //         // }, child: Text('Remove Destination')),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-//reorder items/destinations in cart
-  // void _reorderItems(int oldIndex, int newIndex) {
-  //   setState(() {
-  //     if (newIndex > oldIndex) {
-  //       newIndex -= 1;
-  //     }
-  //     final item = widget.cartItems.removeAt(oldIndex);
-  //     widget.cartItems.insert(newIndex, item);
-  //   });
-  // }
-
-  // Future<void> _initializemap() async {
-  //   try {
-  //     // Directly use the destinations passed into the MapScreen
-  //     setState(() {
-  //       markers.clear(); // Clear any pre-existing markers
-  //       showRoute = true;
-  //       List<LatLng> destinationPositions = [];
-  //       for (var destination in widget.cartItems) {
-  //         final position =
-  //             LatLng(destination['latitude'], destination['longitude']);
-  //         destinationPositions.add(position);
-
-  //         final markerId =
-  //             'destination_marker_${destination['latitude']}_${destination['longitude']}';
-
-  //         markers.add(Marker(
-  //           markerId: MarkerId(markerId),
-  //           position: position,
-  //           onTap: () {
-  //             setState(() {
-  //               // _selectedDestination =
-  //               //     destination; // Update the selected destination
-  //             });
-  //           },
-  //         ));
-  //       }
-  //       polylines.clear();
-  //     });
-  //   } catch (e) {
-  //     print('Error initializing screen: $e');
-  //   }
-  // }
-
-  // void _onGenerateRouteClicked() {
-  //   List<LatLng> positions = markers.map((marker) => marker.position).toList();
-
-  //   // Ensure the user's location is included as the starting point
-  //   if (userLocation != null) {
-  //     positions.insert(0, userLocation!);
-  //   }
-
-  //   _generateRoute(positions);
-
-  //   // Set the route visibility to true
-  //   setState(() {
-  //     showRoute = true;
-  //   });
-  // }
-
-  //   Future<void> _getUserLocation() async {
-  //   //Position position = await getCurrentPosition();
-  //   try {
-  //     // Fetch current location (for demonstration purposes)
-  //     setState(() {
-  //       //Position position = await getCurrentPosition();
-  //       userLocation = //LatLng(position.latitude, position.longitude);
-  //           LatLng(
-  //               14.499111632246139, 121.18714131749572); // Example coordinates
-
-  //       // Add marker for user's location
-  //       // markers.add(
-  //       //   Marker(
-  //       //     markerId: MarkerId("user_location"),
-  //       //     position: userLocation!,
-  //       //     infoWindow: InfoWindow(title: "Your Location"),
-  //       //     icon: BitmapDescriptor.defaultMarkerWithHue(
-  //       //         BitmapDescriptor.hueBlue), // Custom marker color
-  //       //   ),
-  //       // );
-  //     });
-
-  //     // Move the camera to the user's location (ensure it's not null)
-  //     if (mapController != null && userLocation != null) {
-  //       mapController!.animateCamera(
-  //         CameraUpdate.newLatLngZoom(userLocation!, 14), // Adjust zoom level
-  //       );
-  //     }
-  //   } catch (e) {
-  //     print("Error fetching user location: $e");
-  //   }
-  // }

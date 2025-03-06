@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/Ui/forward_button_red.dart';
+import 'package:firestore_basics/Ui/top_icon.dart';
+import 'package:firestore_basics/Ui/white_buttons.dart';
 import 'package:firestore_basics/itinerary%20generator/plan_itinerary.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -86,6 +88,7 @@ class _SelectDestinationsState extends State<SelectDestinations> {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         double lat = (data['latitude'] as num).toDouble();
         double lng = (data['longitude'] as num).toDouble();
+        String municipality = data['municipality'];
 
         String title = data['name'] ?? 'Destination';
 
@@ -98,6 +101,7 @@ class _SelectDestinationsState extends State<SelectDestinations> {
               setState(() {
                 _selectedDestination = {
                   'name': title,
+                  'municipality': municipality,
                   'address': data['address'],
                   'latitude': lat,
                   'longitude': lng,
@@ -211,34 +215,54 @@ class _SelectDestinationsState extends State<SelectDestinations> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _selectedDestination!['name'] ?? '',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedDestination!['name'] ?? '',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFA52424)),
+                  ),
+                  Text(
+                    "${_selectedDestination!['municipality'] ?? ''}",
+                    style: TextStyle(fontSize: 11),
+                  ),
+                ],
+              ),
+              Spacer(),
+              Text(
+                '${_selectedDestination!['pricing'].toString()}.00',
+                style: TextStyle(fontSize: 15),
+              ),
+            ],
           ),
           SizedBox(height: 5),
-          Text(
-            'Pricing: ${_selectedDestination!['pricing'].toString()}',
-            style: TextStyle(fontSize: 13),
-          ),
           Text(
             "Address: ${_selectedDestination!['address'] ?? ''}",
             style: TextStyle(fontSize: 11),
           ),
           Spacer(),
-          Column(
+          Row(
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              Spacer(),
               ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                      fixedSize: Size(100, 0.5),
+                      minimumSize: Size(70, 25),
                       padding: EdgeInsets.only(top: 5, bottom: 5),
                       backgroundColor: Color(0xFFA52424),
                       foregroundColor: Colors.white),
                   onPressed: () {
                     _addToCart(_selectedDestination!);
                   },
-                  child: Text('Add to Cart', style: TextStyle(fontSize: 12))),
+                  child: Text('Add', style: TextStyle(fontSize: 12))),
             ],
           ),
         ],
@@ -286,11 +310,18 @@ class _SelectDestinationsState extends State<SelectDestinations> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: BackButtonRed(),
-        ),
+        automaticallyImplyLeading: false, // Removes the default back button
+        actions: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    right: 16), // Adjust the padding as needed
+                child: Closedbutton(),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -343,20 +374,42 @@ class _SelectDestinationsState extends State<SelectDestinations> {
           ),
           Center(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  margin: EdgeInsets.only(right: 20),
-                  alignment: Alignment.center,
-                  child: ForwardButtonRed(
+                Padding(
+                  padding: const EdgeInsets.only(left: 20),
+                  child: BackButtonWhite(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 20),
+                  child: NextButtonWhite(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => PlanItinerary(
-                              cartItems: cartItems,
-                              numberOfDays: numberOfDays,
-                              selectedTripType: selectedTripType),
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  PlanItinerary(
+                                      cartItems: cartItems,
+                                      numberOfDays: numberOfDays,
+                                      selectedTripType: selectedTripType),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(1.0, 0.0); // Start from right
+                            const end = Offset.zero; // End at original position
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end)
+                                .chain(CurveTween(curve: curve));
+                            var offsetAnimation = animation.drive(tween);
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            );
+                          },
                         ),
                       );
                     },
