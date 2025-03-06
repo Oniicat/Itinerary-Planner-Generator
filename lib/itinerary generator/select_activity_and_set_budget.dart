@@ -3,6 +3,7 @@ import 'package:firestore_basics/Ui/back_button_red.dart';
 import 'package:firestore_basics/Ui/forward_button_red.dart';
 import 'package:firestore_basics/Ui/textfield.dart';
 import 'package:firestore_basics/Ui/top_icon.dart';
+import 'package:firestore_basics/Ui/white_buttons.dart';
 import 'package:firestore_basics/itinerary%20generator/select_destinations.dart';
 import 'package:flutter/material.dart';
 
@@ -50,16 +51,28 @@ class _SelectActivityState extends State<SelectActivity> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(10.0), // Set the height here
-        child: AppBar(
-          automaticallyImplyLeading: false,
-        ),
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the default back button
+        actions: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    right: 16), // Adjust the padding as needed
+                child: Closedbutton(),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
-          TopIcon(
-            text: '3 of 6',
+          Padding(
+            padding: const EdgeInsets.only(right: 320),
+            child: Text(
+              '3 of 6',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
           SizedBox(height: 20),
           Text(
@@ -72,8 +85,8 @@ class _SelectActivityState extends State<SelectActivity> {
           SizedBox(height: 20),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(10.0),
-              width: MediaQuery.of(context).size.width * 0.82,
+              padding: const EdgeInsets.all(15.0),
+              width: MediaQuery.of(context).size.width * 0.90,
               decoration: BoxDecoration(
                 color: Colors.white,
               ),
@@ -110,14 +123,30 @@ class _SelectActivityState extends State<SelectActivity> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              BackButtonRed(
+              BackButtonWhite(
                 onPressed: () {
                   Navigator.pop(context);
                 },
               ),
               SizedBox(width: MediaQuery.of(context).size.width * 0.6),
-              ForwardButtonRed(
+              NextButtonWhite(
                 onPressed: () {
+                  if (selectedActivities.isEmpty) {
+                    showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            content:
+                                Text('Please select at least one activity'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          );
+                        });
+                  }
                   if (selectedActivities.isNotEmpty) {
                     print('Selected Activities: $selectedActivities');
                     print('Selected Municipalities: $selectedMunicipalities');
@@ -126,19 +155,28 @@ class _SelectActivityState extends State<SelectActivity> {
 
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => SetBudgetandDays(
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            SetBudgetandDays(
                           selectedActivities: selectedActivities,
                           selectedMunicipalities: selectedMunicipalities,
                           selectedTripType: selectedTripType,
                           numberOfTravelers: numberOfTravelers,
                         ),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(1.0, 0.0); // Start from right
+                          const end = Offset.zero; // End at original position
+                          const curve = Curves.easeInOut;
+                          var tween = Tween(begin: begin, end: end)
+                              .chain(CurveTween(curve: curve));
+                          var offsetAnimation = animation.drive(tween);
+                          return SlideTransition(
+                            position: offsetAnimation,
+                            child: child,
+                          );
+                        },
                       ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Please select at least one activity')),
                     );
                   }
                 },
@@ -245,17 +283,32 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(10.0), // Set the height here
-        child: AppBar(
-          automaticallyImplyLeading: false,
-        ),
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the default back button
+        actions: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    right: 16), // Adjust the padding as needed
+                child: Closedbutton(),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Padding(
-        padding: EdgeInsets.all(12.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TopIcon(text: '4 of 6'),
+            Padding(
+              padding: const EdgeInsets.only(right: 320),
+              child: Text(
+                '4 of 6',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 20),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -282,7 +335,7 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
                           SizedBox(width: 25),
                           SizedBox(
                             width: MediaQuery.of(context).size.width * 0.45,
-                            child: MyTextField(
+                            child: NumberTextfield(
                               keyboardType: TextInputType.number,
                               controller: minBudgetController,
                               hintText: 'Minimum Budget',
@@ -303,7 +356,7 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
                           SizedBox(width: 25),
                           SizedBox(
                             width: MediaQuery.of(context).size.width * 0.45,
-                            child: MyTextField(
+                            child: NumberTextfield(
                               keyboardType: TextInputType.number,
                               controller: maxBudgetController,
                               hintText: 'Maximum Budget',
@@ -330,7 +383,7 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
                       width: 40,
                     ),
                     Text(
-                      'How many?',
+                      'How many days?',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
@@ -346,13 +399,13 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                BackButtonRed(
+                BackButtonWhite(
                   onPressed: () {
                     Navigator.pop(context);
                   },
                 ),
                 SizedBox(width: MediaQuery.of(context).size.width * 0.6),
-                ForwardButtonRed(
+                NextButtonWhite(
                   onPressed: () {
                     // Parse budget input
                     int? min = int.tryParse(minBudgetController.text);
@@ -388,15 +441,32 @@ class _SetBudgetandDaysState extends State<SetBudgetandDays> {
                     print('Number of Travelers: $numberOfTravelers');
                     Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => SelectDestinations(
-                                selectedActivities: selectedActivities,
-                                selectedMunicipalities: selectedMunicipalities,
-                                selectedTripType: selectedTripType,
-                                numberOfTravelers: numberOfTravelers,
-                                minBudget: minBudget,
-                                maxBudget: maxBudget,
-                                numberOfDays: numberOfDays)));
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  SelectDestinations(
+                                      selectedActivities: selectedActivities,
+                                      selectedMunicipalities:
+                                          selectedMunicipalities,
+                                      selectedTripType: selectedTripType,
+                                      numberOfTravelers: numberOfTravelers,
+                                      minBudget: minBudget,
+                                      maxBudget: maxBudget,
+                                      numberOfDays: numberOfDays),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(1.0, 0.0); // Start from right
+                            const end = Offset.zero; // End at original position
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end)
+                                .chain(CurveTween(curve: curve));
+                            var offsetAnimation = animation.drive(tween);
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            );
+                          },
+                        ));
                   },
                 ),
               ],

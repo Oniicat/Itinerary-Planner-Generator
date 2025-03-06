@@ -1,4 +1,4 @@
-import 'package:firestore_basics/itinerary%20Planner/map.dart';
+import 'package:firestore_basics/itinerary%20Planner/select_destination.dart';
 import 'package:firestore_basics/itinerary%20generator/select_municipality_and_kind_of_trip.dart';
 import 'package:flutter/material.dart';
 

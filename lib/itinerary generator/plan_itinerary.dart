@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:firestore_basics/Directions/directions_model.dart';
 import 'package:firestore_basics/Directions/directions_repository.dart';
 import 'package:firestore_basics/Ui/back_button_red.dart';
-import 'package:firestore_basics/itinerary%20Planner/tripsummary.dart';
+import 'package:firestore_basics/Ui/top_icon.dart';
+import 'package:firestore_basics/Ui/white_buttons.dart';
+import 'package:firestore_basics/itinerary%20Planner/itinerary_summary.dart';
 import 'package:firestore_basics/itinerary%20generator/trip_summary_generator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -577,11 +579,20 @@ class _PlanItineraryState extends State<PlanItinerary> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false, // Removes the default back button
+        // Left-side button
         leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: BackButtonRed(),
+          padding: const EdgeInsets.only(left: 16), // Adjust as needed
+          child: BackButtonRed(), // Your custom back button
         ),
+
+        // Right-side button
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16), // Adjust as needed
+            child: Closedbutton(), // Your custom close button
+          ),
+        ],
       ),
       // resizeToAvoidBottomInset: false,
       body: SafeArea(
@@ -727,6 +738,7 @@ class _PlanItineraryState extends State<PlanItinerary> {
                           controller: scrollController,
                           child: Column(
                             children: [
+                              SizedBox(height: 10),
                               Padding(
                                 padding: const EdgeInsets.only(right: 152),
                                 child: Text(

@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:firestore_basics/Ui/back_button_red.dart';
+import 'package:firestore_basics/Ui/navbar.dart';
+import 'package:firestore_basics/Ui/top_icon.dart';
+import 'package:firestore_basics/Ui/white_buttons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_basics/itinerary%20Planner/cart.dart';
+import 'package:firestore_basics/itinerary%20Planner/itinerary_basket.dart';
 
 class CreateItinerary extends StatefulWidget {
   const CreateItinerary({super.key});
@@ -312,6 +315,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
         var data = doc.data() as Map<String, dynamic>;
         return {
           'name': data['name'],
+          'municipality': data['municipality'],
           'latitude': data['latitude']?.toDouble() ?? 0.0,
           'longitude': data['longitude']?.toDouble() ?? 0.0,
           'type': data['type'],
@@ -340,34 +344,54 @@ class _CreateItineraryState extends State<CreateItinerary> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _selectedDestination!['name'] ?? '',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedDestination!['name'] ?? '',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFA52424)),
+                  ),
+                  Text(
+                    "${_selectedDestination!['municipality'] ?? ''}",
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+              Spacer(),
+              Text(
+                '${_selectedDestination!['pricing'].toString()}',
+                style: TextStyle(fontSize: 15, color: Color(0xFFA52424)),
+              ),
+            ],
           ),
           SizedBox(height: 5),
           Text(
-            'Pricing: ${_selectedDestination!['pricing'].toString()}',
-            style: TextStyle(fontSize: 13),
-          ),
-          Text(
             "Address: ${_selectedDestination!['address'] ?? ''}",
-            style: TextStyle(fontSize: 10),
+            style: TextStyle(fontSize: 12),
           ),
           Spacer(),
-          Column(
+          Row(
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              Spacer(),
               ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                      fixedSize: Size(120, 0.5),
+                      minimumSize: Size(70, 25),
                       padding: EdgeInsets.only(top: 5, bottom: 5),
                       backgroundColor: Color(0xFFA52424),
                       foregroundColor: Colors.white),
                   onPressed: () {
                     _addToCart(_selectedDestination!);
                   },
-                  child: Text('Add to Cart', style: TextStyle(fontSize: 15))),
+                  child: Text('Add', style: TextStyle(fontSize: 13))),
             ],
           ),
         ],
@@ -380,13 +404,22 @@ class _CreateItineraryState extends State<CreateItinerary> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: BackButtonRed(),
-        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Closedbutton(),
+          ),
+        ],
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 320),
+            child: Text(
+              '1 of 3',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
           Stack(
             children: [
               Center(
@@ -512,42 +545,38 @@ class _CreateItineraryState extends State<CreateItinerary> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Container(
-                  margin: EdgeInsets.only(right: 10),
-                  alignment: Alignment.center,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.arrow_circle_right,
-                      size: 50,
-                      color: Color(0xFFA52424),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  CartScreen(
-                            cartItems: _cartItems,
-                          ),
-                          transitionsBuilder:
-                              (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(1.0, 0.0); // Start from right
-                            const end = Offset.zero; // End at original position
-                            const curve = Curves.easeInOut;
-                            var tween = Tween(begin: begin, end: end)
-                                .chain(CurveTween(curve: curve));
-                            var offsetAnimation = animation.drive(tween);
-                            return SlideTransition(
-                              position: offsetAnimation,
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                SizedBox(
+                  height: 60,
                 ),
+                NextButtonWhite(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            CartScreen(
+                          cartItems: _cartItems,
+                        ),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(1.0, 0.0); // Start from right
+                          const end = Offset.zero; // End at original position
+                          const curve = Curves.easeInOut;
+                          var tween = Tween(begin: begin, end: end)
+                              .chain(CurveTween(curve: curve));
+                          var offsetAnimation = animation.drive(tween);
+                          return SlideTransition(
+                            position: offsetAnimation,
+                            child: child,
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(
+                  width: 20,
+                )
               ],
             ),
           )

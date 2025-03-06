@@ -471,15 +471,6 @@ class _TripDetailsState extends State<TripDetails> {
                   child: ListTile(
                     title: Text(destination['name']),
                     subtitle: Text(destination['address']),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () {
-                        setState(() {
-                          destinations.removeAt(index);
-                          dailyDestinations[day] = destinations;
-                        });
-                      },
-                    ),
                   ),
                 );
               }),
